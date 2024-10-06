@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
-project(PBR_Visualizer VERSION 0.1)
+project(PBR_Visualiser VERSION 0.1)
 
 IF (WIN32)
   message(NOTICE "\n")

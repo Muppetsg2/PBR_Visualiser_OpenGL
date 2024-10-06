@@ -66,7 +66,7 @@ void imgui_end();
 
 void end_frame();
 
-constexpr const char* WINDOW_NAME = "PBR_Visualizer";
+constexpr const char* WINDOW_NAME = "PBR_Visualiser";
 constexpr int32_t WINDOW_WIDTH  = 1024;
 constexpr int32_t WINDOW_HEIGHT = 1024;
 
