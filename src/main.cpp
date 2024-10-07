@@ -59,6 +59,12 @@ void input();
 void update();
 void render();
 
+GLuint LoadTextureFromFile(const char* filename);
+
+#if _DEBUG
+GLuint LoadDefaultBlackTexture();
+#endif
+
 void init_imgui();
 void imgui_begin();
 void imgui_render();
@@ -76,6 +82,15 @@ GLFWwindow* window = nullptr;
 const     char*   glsl_version     = "#version 450";
 constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
+
+#if _DEBUG
+GLuint imageTextures[5] = { 0, 0, 0, 0, 0 };  // Tekstury dla trzech obrazow
+std::string imagePaths[5];              // Sciezki do trzech obrazow
+std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };    // Nazwy obrazow
+bool openFileDialogs[5] = { false, false, false, false, false }; // Flagi dla otwarcia dialogow plikow
+ImFileDialogInfo fileDialogInfos[5];  // Informacje dla dialogow plikow
+GLuint defaultBlackTexture = 0;
+#endif
 
 int main(int argc, char** argv)
 {
@@ -212,6 +227,45 @@ void render()
     glClearColor(0.f, 0.f, 0.f, 1.f);
 }
 
+GLuint LoadTextureFromFile(const char* filename)
+{
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        GLuint textureID;
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, nrChannels == 4 ? GL_RGBA : GL_RGB, width, height, 0, nrChannels == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        stbi_image_free(data);
+        return textureID;
+    }
+    else
+    {
+        spdlog::error("Failed to load texture: %s\n", filename);
+        return 0;
+    }
+}
+
+GLuint LoadDefaultBlackTexture()
+{
+    unsigned char blackPixel[3] = { 0, 0, 0 }; // czarna tekstura RGB
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, blackPixel);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return textureID;
+}
+
 void end_frame()
 {
     TimeManager::Update();
@@ -259,6 +313,8 @@ void init_imgui()
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
+
+    defaultBlackTexture = LoadDefaultBlackTexture();
 }
 
 void imgui_begin()
@@ -271,12 +327,48 @@ void imgui_begin()
 
 void imgui_render()
 {
-    if (ImGui::Begin("Hello, world!")) {
+    if (!ImGui::Begin("PBR VISUALISER")) {
         ImGui::End();
         return;
     }
 
+    for (int i = 0; i < 5; ++i)
+    {
+        // Wyswietl przycisk dla wczytania kazdego z obrazow
+        if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
+        {
+            openFileDialogs[i] = true;
+            fileDialogInfos[i].title = "Choose " + imageName[i] + " image";
+            fileDialogInfos[i].type = ImGuiFileDialogType_OpenFile;
+            fileDialogInfos[i].directoryPath = std::filesystem::current_path().append("./res/textures/");
+        }
+
+        // Wyswietl okno dialogowe dla danego obrazu
+        if (openFileDialogs[i])
+        {
+            if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
+            {
+                imagePaths[i] = fileDialogInfos[i].resultPath.string();
+                imageTextures[i] = LoadTextureFromFile(imagePaths[i].c_str()); // Funkcja do ladowania tekstury z pliku
+            }
+        }
+
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 130);
+
+        // Wyswietl miniature zaladowanego obrazu, jesli jest dostepna
+        if (imageTextures[i] != 0)
+        {
+            ImGui::Image((void*)(intptr_t)imageTextures[i], ImVec2(128, 128)); // Wyswietl miniature
+        }
+        else 
+        {
+            ImGui::Image((void*)(intptr_t)defaultBlackTexture, ImVec2(128, 128)); // Wyswietl miniature
+        }
+    }
+
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+    ImGui::End();
 }
 
 void imgui_end()
