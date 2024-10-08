@@ -7,6 +7,9 @@ private:
     const GLchar* _vertPath;
     const GLchar* _fragPath;
     bool _init = false;
+
+    void LoadShaderFromFile(const GLchar* vertPath, const GLchar* fragPath);
+
 public:
 
     Shader();

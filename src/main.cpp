@@ -5,11 +5,13 @@
 #endif
 
 extern "C" {
-    _declspec(dllexport) uint32_t NvOptimusEnablement = 1;
+    _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
     _declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 
 #include <TimeManager.h>
+#include <Texture.h>
+#include <Shader.h>
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -52,25 +54,20 @@ static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-
 bool init();
 
 void input();
 void update();
 void render();
 
-GLuint LoadTextureFromFile(const char* filename);
-
-#if _DEBUG
 GLuint LoadDefaultBlackTexture();
-#endif
+
+void end_frame();
 
 void init_imgui();
 void imgui_begin();
 void imgui_render();
 void imgui_end();
-
-void end_frame();
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
 constexpr int32_t WINDOW_WIDTH  = 1024;
@@ -83,13 +80,13 @@ const     char*   glsl_version     = "#version 450";
 constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
-#if _DEBUG
-GLuint imageTextures[5] = { 0, 0, 0, 0, 0 };  // Tekstury dla trzech obrazow
-std::string imagePaths[5];              // Sciezki do trzech obrazow
-std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };    // Nazwy obrazow
-bool openFileDialogs[5] = { false, false, false, false, false }; // Flagi dla otwarcia dialogow plikow
-ImFileDialogInfo fileDialogInfos[5];  // Informacje dla dialogow plikow
+Texture* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };
 GLuint defaultBlackTexture = 0;
+
+#if _DEBUG
+bool openFileDialogs[5] = { false, false, false, false, false };
+ImFileDialogInfo fileDialogInfos[5];
 #endif
 
 int main(int argc, char** argv)
@@ -132,6 +129,12 @@ int main(int argc, char** argv)
 #endif
         // End frame and swap buffers (double buffering)
         end_frame();
+    }
+
+    for (int i = 0; i < 5; ++i) 
+    {
+        delete imageTextures[i];
+        imageTextures[i] = nullptr;
     }
 
 #if _DEBUG
@@ -227,29 +230,6 @@ void render()
     glClearColor(0.f, 0.f, 0.f, 1.f);
 }
 
-GLuint LoadTextureFromFile(const char* filename)
-{
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        GLuint textureID;
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, nrChannels == 4 ? GL_RGBA : GL_RGB, width, height, 0, nrChannels == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        stbi_image_free(data);
-        return textureID;
-    }
-    else
-    {
-        spdlog::error("Failed to load texture: %s\n", filename);
-        return 0;
-    }
-}
-
 GLuint LoadDefaultBlackTexture()
 {
     unsigned char blackPixel[3] = { 0, 0, 0 }; // czarna tekstura RGB
@@ -334,7 +314,6 @@ void imgui_render()
 
     for (int i = 0; i < 5; ++i)
     {
-        // Wyswietl przycisk dla wczytania kazdego z obrazow
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
         {
             openFileDialogs[i] = true;
@@ -343,26 +322,23 @@ void imgui_render()
             fileDialogInfos[i].directoryPath = std::filesystem::current_path().append("./res/textures/");
         }
 
-        // Wyswietl okno dialogowe dla danego obrazu
         if (openFileDialogs[i])
         {
             if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
             {
-                imagePaths[i] = fileDialogInfos[i].resultPath.string();
-                imageTextures[i] = LoadTextureFromFile(imagePaths[i].c_str()); // Funkcja do ladowania tekstury z pliku
+                imageTextures[i] = new Texture(fileDialogInfos[i].resultPath.string().c_str());
             }
         }
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 130);
 
-        // Wyswietl miniature zaladowanego obrazu, jesli jest dostepna
         if (imageTextures[i] != 0)
         {
-            ImGui::Image((void*)(intptr_t)imageTextures[i], ImVec2(128, 128)); // Wyswietl miniature
+            ImGui::Image((void*)(intptr_t)imageTextures[i]->GetId(), ImVec2(128, 128));
         }
         else 
         {
-            ImGui::Image((void*)(intptr_t)defaultBlackTexture, ImVec2(128, 128)); // Wyswietl miniature
+            ImGui::Image((void*)(intptr_t)defaultBlackTexture, ImVec2(128, 128));
         }
     }
 

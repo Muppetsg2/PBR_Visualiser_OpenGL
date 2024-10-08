@@ -1,43 +1,106 @@
 #include <Texture.h>
 
-Texture::Texture(const GLchar* path, int width, int height, int channelsNum, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip)
+void Texture::LoadTextureFromFile(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip, bool detectFormat)
 {
-
-}
-
-Texture::Texture(const GLchar* path, glm::ivec2 size, int channelsNum, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip)
-{
-	this->_id = 0;
-	glGenTextures(1, &(this->_id));
-	glBindTexture(GL_TEXTURE_2D, this->_id);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)sWrapMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)tWrapMode);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)minFilterMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)magFilterMode);
-
-	// Flip Images
 	stbi_set_flip_vertically_on_load(flip);
 	unsigned char* image = stbi_load(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
 	if (image)
 	{
-		GLenum format{};
-		if (this->_channelsNum == 1)
-			format = GL_RED;
-		else if (this->_channelsNum == 3)
-			format = GL_RGB;
-		else if (this->_channelsNum == 4)
-			format = GL_RGBA;
+		this->_path = path;
 
-		glTexImage2D(GL_TEXTURE_2D, 0, format, _size.x, _size.y, 0, format, GL_UNSIGNED_BYTE, image);
+		this->_id = 0;
+		glGenTextures(1, &(this->_id));
+		glBindTexture(GL_TEXTURE_2D, this->_id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)(this->_sWrapMode = sWrapMode));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)(this->_tWrapMode = tWrapMode));
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)(this->_minFilterMode = minFilterMode));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)(this->_magFilterMode = magFilterMode));
+
+		this->_format = format;
+		this->_fileFormat = fileFormat;
+
+		if (detectFormat) {
+			if (this->_channelsNum == 1) { this->_format = TextureFormat::RED; this->_fileFormat = TextureFileFormat::RED; }
+			else if (this->_channelsNum == 2) { this->_format = TextureFormat::RG; this->_fileFormat = TextureFileFormat::RG; }
+			else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = TextureFileFormat::SRGB; }
+			else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = TextureFileFormat::SRGBA; }
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_UNSIGNED_BYTE, image);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
 	{
-		spdlog::error("Failed to load texture");
+		spdlog::error("Failed to load texture: %s\n", path);
 	}
+
 	stbi_image_free(image);
+	return;
+}
+
+Texture::Texture() 
+{
+	_id = 0;
+	_size = { 0, 0 };
+	_channelsNum = 0;
+
+	_path = "";
+
+	_format = TextureFormat::RGB;
+	_fileFormat = TextureFileFormat::SRGB;
+	_sWrapMode = TextureWrapMode::MIRRORED_REPEAT;
+	_tWrapMode = TextureWrapMode::MIRRORED_REPEAT;
+	_minFilterMode = TextureFilterMode::NEAREST_MIPMAP_LINEAR;
+	_magFilterMode = TextureFilterMode::LINEAR;
+}
+
+Texture::Texture(const Texture&& texture) 
+{
+	_id = texture._id;
+	_size = texture._size;
+	_channelsNum = texture._channelsNum;
+
+	_path = texture._path;
+
+	_format = texture._format;
+	_fileFormat = texture._fileFormat;
+	_sWrapMode = texture._sWrapMode;
+	_tWrapMode = texture._tWrapMode;
+	_minFilterMode = texture._minFilterMode;
+	_magFilterMode = texture._magFilterMode;
+}
+
+Texture::Texture(const Texture& texture)
+{
+	_id = texture._id;
+	_size = texture._size;
+	_channelsNum = texture._channelsNum;
+
+	_path = texture._path;
+
+	_format = texture._format;
+	_fileFormat = texture._fileFormat;
+	_sWrapMode = texture._sWrapMode;
+	_tWrapMode = texture._tWrapMode;
+	_minFilterMode = texture._minFilterMode;
+	_magFilterMode = texture._magFilterMode;
+}
+
+Texture::Texture(const GLchar* path, bool flip)
+{
+	LoadTextureFromFile(path, TextureFileFormat::SRGB, TextureFormat::RGB, TextureWrapMode::MIRRORED_REPEAT, TextureWrapMode::MIRRORED_REPEAT, TextureFilterMode::NEAREST_MIPMAP_LINEAR, TextureFilterMode::LINEAR, flip, true);
+}
+
+Texture::Texture(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, bool flip)
+{
+	LoadTextureFromFile(path, fileFormat, format, TextureWrapMode::MIRRORED_REPEAT, TextureWrapMode::MIRRORED_REPEAT, TextureFilterMode::NEAREST_MIPMAP_LINEAR, TextureFilterMode::LINEAR, flip, false);
+}
+
+Texture::Texture(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip)
+{
+	LoadTextureFromFile(path, fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, flip, false);
 }
 
 Texture::~Texture()
@@ -82,21 +145,21 @@ GLuint Texture::GetId() const
 	return _id;
 }
 
-glm::uvec2 Texture::GetSize() const {
+glm::ivec2 Texture::GetSize() const {
 	return _size;
 }
 
-unsigned int Texture::GetWidth() const
+int Texture::GetWidth() const
 {
 	return _size.x;
 }
 
-unsigned int Texture::GetHeight() const
+int Texture::GetHeight() const
 {
 	return _size.y;
 }
 
-unsigned int Texture::GetChannelsNum() const
+int Texture::GetChannelsNum() const
 {
 	return _channelsNum;
 }
@@ -104,6 +167,11 @@ unsigned int Texture::GetChannelsNum() const
 TextureFormat Texture::GetFormat() const
 {
 	return _format;
+}
+
+TextureFileFormat Texture::GetFileFormat() const
+{
+	return _fileFormat;
 }
 
 TextureWrapMode Texture::GetWrapModeS() const
