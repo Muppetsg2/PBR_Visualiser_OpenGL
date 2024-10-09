@@ -10,8 +10,10 @@ extern "C" {
 }
 
 #include <TimeManager.h>
-#include <Texture.h>
+#include <Texture2D.h>
 #include <Shader.h>
+#include <Skybox.h>
+#include <Camera.h>
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -52,6 +54,7 @@ static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint i
 static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    Camera::OnWindowSizeChange();
 }
 
 bool init();
@@ -64,10 +67,13 @@ GLuint LoadDefaultBlackTexture();
 
 void end_frame();
 
+#if _DEBUG
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void init_imgui();
 void imgui_begin();
 void imgui_render();
 void imgui_end();
+#endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
 constexpr int32_t WINDOW_WIDTH  = 1024;
@@ -80,13 +86,21 @@ const     char*   glsl_version     = "#version 450";
 constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
-Texture* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+Texture2D* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
 std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };
 GLuint defaultBlackTexture = 0;
 
 #if _DEBUG
 bool openFileDialogs[5] = { false, false, false, false, false };
 ImFileDialogInfo fileDialogInfos[5];
+
+float cameraSpeed = 40.f;
+bool released = true;
+bool mouseNotUsed = true;
+float sensitivity = 0.1f;
+
+GLfloat lastX = 0.f, lastY = 0.f;
+float rotateAngle = 50.f;
 #endif
 
 int main(int argc, char** argv)
@@ -108,6 +122,18 @@ int main(int argc, char** argv)
     init_imgui();
     spdlog::info("Initialized ImGui.");
 #endif
+    
+    Camera::Init(window);
+
+    const GLchar* faces[6] = { 
+        "./res/skybox/spruit_sunrise_2k_hdr/px.hdr",
+        "./res/skybox/spruit_sunrise_2k_hdr/nx.hdr",
+        "./res/skybox/spruit_sunrise_2k_hdr/py.hdr",
+        "./res/skybox/spruit_sunrise_2k_hdr/ny.hdr",
+        "./res/skybox/spruit_sunrise_2k_hdr/pz.hdr",
+        "./res/skybox/spruit_sunrise_2k_hdr/nz.hdr"
+    };
+    Skybox::Init(faces);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -215,7 +241,56 @@ bool init()
 
 void input()
 {
-    // I/O ops go here
+#if _DEBUG
+    bool pressed = false;
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+    {
+        Camera::SetPosition(Camera::GetPosition() + Camera::GetFrontDir() * cameraSpeed * TimeManager::GetDeltaTime());
+        pressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+    {
+        Camera::SetPosition(Camera::GetPosition() - Camera::GetFrontDir() * cameraSpeed * TimeManager::GetDeltaTime());
+        pressed = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+    {
+        Camera::SetPosition(Camera::GetPosition() - Camera::GetRight() * cameraSpeed * TimeManager::GetDeltaTime());
+        pressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+    {
+        Camera::SetPosition(Camera::GetPosition() + Camera::GetRight() * cameraSpeed * TimeManager::GetDeltaTime());
+        pressed = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS && released) {
+
+        released = false;
+        mouseNotUsed = true;
+        if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetCursorPosCallback(window, ImGui_ImplGlfw_CursorPosCallback);
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwSetCursorPosCallback(window, mouse_callback);
+        }
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) != GLFW_REPEAT && glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_RELEASE) {
+        released = true;
+    }
+#endif
 }
 
 void update()
@@ -226,8 +301,13 @@ void update()
 void render()
 {
     // OpenGL Rendering code goes here
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.f, 0.f, 0.f, 1.f);
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
+    Skybox::Draw();
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
 }
 
 GLuint LoadDefaultBlackTexture()
@@ -260,6 +340,45 @@ void end_frame()
 }
 
 #if _DEBUG
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+
+    if (mouseNotUsed)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        mouseNotUsed = false;
+    }
+
+    GLfloat xoffset = xpos - lastX;
+    GLfloat yoffset = lastY - ypos; // Odwrocone, poniewaz wsporzedne zmieniaja sie od dolu do gory  
+    lastX = xpos;
+    lastY = ypos;
+
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    glm::vec3 rot = Camera::GetRotation();
+
+    // YAW = ROT Y
+    // PITCH = ROT X
+    // ROLL = ROT Z
+
+    rot.x += yoffset;
+
+    if (rot.x > 89.f) {
+        rot.x = 89.f;
+    }
+
+    if (rot.x < -89.f)
+    {
+        rot.x = -89.f;
+    }
+
+    Camera::SetRotation(glm::vec3(rot.x, rot.y + xoffset, rot.z));
+}
+
 void init_imgui()
 {
     // Setup Dear ImGui binding
@@ -326,7 +445,7 @@ void imgui_render()
         {
             if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
             {
-                imageTextures[i] = new Texture(fileDialogInfos[i].resultPath.string().c_str());
+                imageTextures[i] = new Texture2D(fileDialogInfos[i].resultPath.string().c_str());
             }
         }
 

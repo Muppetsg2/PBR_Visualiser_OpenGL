@@ -30,3 +30,6 @@
 #include <string>
 #include <memory>
 #include <fstream>
+#include <vector>
+#include <filesystem>
+#include <cmath>
