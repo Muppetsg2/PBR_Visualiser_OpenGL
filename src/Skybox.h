@@ -10,7 +10,7 @@ private:
     static Shader* _shader;
 
     static bool _init;
-    static bool _hdri;
+    static bool _hdr;
 
     static const GLchar* paths[6];
 
@@ -19,7 +19,7 @@ private:
 
 public:
     static void Init(const GLchar* faces[6]);
-    static void Init(const GLchar* hdri);
+    static void Init(const GLchar* hdr);
     static void Draw();
     static void Deinit();
 };
