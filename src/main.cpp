@@ -76,8 +76,8 @@ void imgui_end();
 #endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
-constexpr int32_t WINDOW_WIDTH  = 1024;
-constexpr int32_t WINDOW_HEIGHT = 1024;
+constexpr int32_t WINDOW_WIDTH  = 800;
+constexpr int32_t WINDOW_HEIGHT = 800;
 
 GLFWwindow* window = nullptr;
 
@@ -125,15 +125,27 @@ int main(int argc, char** argv)
     
     Camera::Init(window);
 
-    const GLchar* faces[6] = { 
-        "./res/skybox/spruit_sunrise_2k_hdr/px.hdr",
-        "./res/skybox/spruit_sunrise_2k_hdr/nx.hdr",
-        "./res/skybox/spruit_sunrise_2k_hdr/py.hdr",
-        "./res/skybox/spruit_sunrise_2k_hdr/ny.hdr",
-        "./res/skybox/spruit_sunrise_2k_hdr/pz.hdr",
-        "./res/skybox/spruit_sunrise_2k_hdr/nz.hdr"
+    /*
+    const GLchar* faces[6] = {
+        "./res/skybox/Tutorial/right.jpg",
+        "./res/skybox/Tutorial/left.jpg",
+        "./res/skybox/Tutorial/top.jpg",
+        "./res/skybox/Tutorial/bottom.jpg",
+        "./res/skybox/Tutorial/front.jpg",
+        "./res/skybox/Tutorial/back.jpg"
     };
-    Skybox::Init(faces);
+    */
+
+    const GLchar* faces[6] = {
+        "./res/skybox/Park/posx.jpg",
+        "./res/skybox/Park/negx.jpg",
+        "./res/skybox/Park/posy.jpg",
+        "./res/skybox/Park/negy.jpg",
+        "./res/skybox/Park/posz.jpg",
+        "./res/skybox/Park/negz.jpg"
+    };
+
+    Skybox::Init(window, faces);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -156,6 +168,8 @@ int main(int argc, char** argv)
         // End frame and swap buffers (double buffering)
         end_frame();
     }
+
+    Skybox::Deinit();
 
     for (int i = 0; i < 5; ++i) 
     {

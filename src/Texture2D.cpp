@@ -25,10 +25,10 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		this->_fileFormat = fileFormat;
 
 		if (detectFormat) {
-			if (this->_channelsNum == 1) { this->_format = TextureFormat::RED; this->_fileFormat = this->_hdr ? TextureFileFormat::R32_FLOAT : TextureFileFormat::RED; }
-			else if (this->_channelsNum == 2) { this->_format = TextureFormat::RG; this->_fileFormat = this->_hdr ? TextureFileFormat::RG32_FLOAT : TextureFileFormat::RG; }
-			else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = this->_hdr ? TextureFileFormat::RGB32_FLOAT : TextureFileFormat::SRGB; }
-			else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = this->_hdr ? TextureFileFormat::RGBA32_FLOAT : TextureFileFormat::SRGBA; }
+			if (this->_channelsNum == 1) { this->_format = TextureFormat::RED; this->_fileFormat = this->_hdr ? TextureFileFormat::R16_FLOAT : TextureFileFormat::RED; }
+			else if (this->_channelsNum == 2) { this->_format = TextureFormat::RG; this->_fileFormat = this->_hdr ? TextureFileFormat::RG16_FLOAT : TextureFileFormat::RG; }
+			else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = this->_hdr ? TextureFileFormat::RGB16_FLOAT : TextureFileFormat::SRGB; }
+			else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = this->_hdr ? TextureFileFormat::RGBA16_FLOAT : TextureFileFormat::SRGBA; }
 		}
 
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, this->_hdr ? GL_FLOAT : GL_UNSIGNED_BYTE, image);
@@ -36,7 +36,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 	}
 	else
 	{
-		spdlog::error("Failed to load texture: %s\n", path);
+		spdlog::error("Failed to load texture: {}", path);
 	}
 
 	stbi_image_free(image);

@@ -12,14 +12,16 @@ private:
     static bool _init;
     static bool _hdr;
 
-    static const GLchar* paths[6];
+    static const GLchar* _paths[6];
+
+    static GLFWwindow* _window;
 
     Skybox() = default;
     virtual ~Skybox() = default;
 
 public:
-    static void Init(const GLchar* faces[6]);
-    static void Init(const GLchar* hdr);
+    static void Init(GLFWwindow* window, const GLchar* faces[6]);
+    static void Init(GLFWwindow* window, const GLchar* hdr);
     static void Draw();
     static void Deinit();
 };

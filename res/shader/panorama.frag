@@ -12,22 +12,22 @@ uniform int u_currentFace;
 vec3 uvToXYZ(int face, vec2 uv)
 {
 	if(face == 0)
-		return vec3(     1.f,   uv.y,    -uv.x);
+		return vec3(     1.0,   uv.y,    -uv.x);
 
 	else if(face == 1)
-		return vec3(    -1.f,   uv.y,     uv.x);
+		return vec3(    -1.0,   uv.y,     uv.x);
 
 	else if(face == 2)
-		return vec3(   +uv.x,   -1.f,    +uv.y);
+		return vec3(   +uv.x,   -1.0,    +uv.y);
 
 	else if(face == 3)
-		return vec3(   +uv.x,    1.f,    -uv.y);
+		return vec3(   +uv.x,    1.0,    -uv.y);
 
 	else if(face == 4)
-		return vec3(   +uv.x,   uv.y,      1.f);
+		return vec3(   +uv.x,   uv.y,      1.0);
 
 	else //if(face == 5)
-	{	return vec3(    -uv.x,  +uv.y,     -1.f);}
+	{	return vec3(    -uv.x,  +uv.y,     -1.0);}
 }
 
 vec2 dirToUV(vec3 dir)
@@ -44,10 +44,10 @@ vec3 panoramaToCubeMap(int face, vec2 texCoord)
 	vec3 direction = normalize(scan);
 	vec2 src = dirToUV(direction);
 
-	return  texture(u_panorama, src).rgb; //< get the color from the panorama
+	return texture(u_panorama, src).rgb; //< get the color from the panorama
 }
 
 void main()
 {    
-    FragColor = vec4(pow(panoramaToCubeMap(u_currentFace, TexCoords.xy).rgb, vec3(1.0/2.2)), 1.0);
+    FragColor = vec4(panoramaToCubeMap(u_currentFace, TexCoords).rgb, 1.0);
 }
