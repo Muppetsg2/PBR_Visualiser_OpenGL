@@ -1,12 +1,12 @@
 #pragma once
 
 // IMGUI
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
+
 #include <imgui.h>
 #include <imgui_impl/imgui_impl_glfw.h>
 #include <imgui_impl/imgui_impl_opengl3.h>
 #include <imgui_impl/imgui_filedialog.h>
-
-#define IMGUI_IMPL_OPENGL_LOADER_GLAD
 
 // GLAD
 #include <glad/glad.h>  // Initialize with gladLoadGL()

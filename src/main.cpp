@@ -14,6 +14,7 @@ extern "C" {
 #include <Shader.h>
 #include <Skybox.h>
 #include <Camera.h>
+#include <Shape.h>
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -90,6 +91,10 @@ Texture2D* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
 std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };
 GLuint defaultBlackTexture = 0;
 
+GLuint quadVAO = 0;
+Shader* PBR = nullptr;
+glm::mat4 trans = glm::mat4(1.f);
+
 #if _DEBUG
 bool openFileDialogs[5] = { false, false, false, false, false };
 ImFileDialogInfo fileDialogInfos[5];
@@ -147,6 +152,29 @@ int main(int argc, char** argv)
 
     Skybox::Init(window, faces);
 
+    glGenVertexArrays(1, &quadVAO);
+    glBindVertexArray(quadVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
+
+    // Vertices positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
+
+    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+    trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -169,6 +197,8 @@ int main(int argc, char** argv)
         end_frame();
     }
 
+    delete PBR;
+    PBR = nullptr;
     Skybox::Deinit();
 
     for (int i = 0; i < 5; ++i) 
@@ -317,6 +347,13 @@ void render()
     // OpenGL Rendering code goes here
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.f, 0.f, 0.f, 1.f);
+
+    PBR->Use();
+    PBR->SetMat4("model", trans);
+    glBindVertexArray(quadVAO);
+    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+    glBindVertexArray(0);
+
     glDepthFunc(GL_LESS);
     glCullFace(GL_BACK);
     Skybox::Draw();
@@ -366,7 +403,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     }
 
     GLfloat xoffset = xpos - lastX;
-    GLfloat yoffset = lastY - ypos; // Odwrocone, poniewaz wsporzedne zmieniaja sie od dolu do gory  
+    GLfloat yoffset = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
 

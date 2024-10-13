@@ -314,6 +314,7 @@ void Skybox::Draw()
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 	glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
+	glBindVertexArray(0);
 }
 
 void Skybox::Deinit()

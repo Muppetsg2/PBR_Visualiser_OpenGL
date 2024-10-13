@@ -45,6 +45,8 @@ void Camera::Init(GLFWwindow* window)
 
 	Camera::_window = window;
 
+	UpdateFrontDir();
+
 	glGenBuffers(1, &Camera::_uboMatrices);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, Camera::_uboMatrices);

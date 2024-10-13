@@ -1,5 +1,4 @@
 #pragma once
-
 #include <Vertex.h>
 
 class Shape {
@@ -133,6 +132,8 @@ public:
 	}
 };
 
+#ifdef SHAPE_IMPLEMENTATION
+
 // Initialization
 bool Shape::_cubeInitialized = false;
 bool Shape::_quadInitialized = false;
@@ -211,3 +212,5 @@ unsigned int Shape::_quadIndices[6] = {
 	2, 1, 0,
 	2, 3, 1
 };
+
+#endif
