@@ -155,8 +155,8 @@ int main(int argc, char** argv)
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
+    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
 
     // Vertices positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
@@ -172,8 +172,9 @@ int main(int argc, char** argv)
 
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
 
-    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
-    trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+    //trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+    //trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+    trans = glm::translate(trans, glm::vec3(6.f, 0.f, 0.f));
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -351,7 +352,7 @@ void render()
     PBR->Use();
     PBR->SetMat4("model", trans);
     glBindVertexArray(quadVAO);
-    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
     glBindVertexArray(0);
 
     glDepthFunc(GL_LESS);
