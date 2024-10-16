@@ -33,3 +33,5 @@
 #include <vector>
 #include <filesystem>
 #include <cmath>
+#include <algorithm>
+#include <cctype>

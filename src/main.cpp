@@ -15,6 +15,7 @@ extern "C" {
 #include <Skybox.h>
 #include <Camera.h>
 #include <Shape.h>
+#include <DirectionalLight.h>
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -64,7 +65,7 @@ void input();
 void update();
 void render();
 
-GLuint LoadDefaultBlackTexture();
+GLuint LoadDefaultWhiteTexture();
 
 void end_frame();
 
@@ -77,8 +78,8 @@ void imgui_end();
 #endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
-constexpr int32_t WINDOW_WIDTH  = 800;
-constexpr int32_t WINDOW_HEIGHT = 800;
+constexpr int32_t WINDOW_WIDTH = 1920;//800;
+constexpr int32_t WINDOW_HEIGHT = 1080;//800;
 
 GLFWwindow* window = nullptr;
 
@@ -88,12 +89,14 @@ constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
 Texture2D* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-std::string imageName[5] = { "Color", "Ambient Occlusion", "Metalness", "Normal", "Roughness" };
-GLuint defaultBlackTexture = 0;
+std::string imageName[5] = { "Albedo", "Normal", "Metallic", "Roughness", "AO" };
+GLuint defaultWhiteTexture = 0;
 
 GLuint quadVAO = 0;
 Shader* PBR = nullptr;
 glm::mat4 trans = glm::mat4(1.f);
+
+DirectionalLight light;
 
 #if _DEBUG
 bool openFileDialogs[5] = { false, false, false, false, false };
@@ -155,8 +158,13 @@ int main(int argc, char** argv)
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
 
+#if _DEBUG
     glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
+#else
+    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
+#endif
 
     // Vertices positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
@@ -165,6 +173,10 @@ int main(int argc, char** argv)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
     glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+    glEnableVertexAttribArray(4);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -172,9 +184,18 @@ int main(int argc, char** argv)
 
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
 
-    //trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
-    //trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+    light.Direction = glm::vec3(1.f, 0.f, 0.f);
+    light.Ambient = glm::vec3(1.f, 1.f, 1.f);
+    light.Diffuse = glm::vec3(1.f, 1.f, 1.f);
+    light.Specular = glm::vec3(1.f, 1.f, 1.f);
+    light.On = true;
+
+#if _DEBUG
     trans = glm::translate(trans, glm::vec3(6.f, 0.f, 0.f));
+#else
+    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+    trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+#endif
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -207,6 +228,8 @@ int main(int argc, char** argv)
         delete imageTextures[i];
         imageTextures[i] = nullptr;
     }
+
+    glDeleteTextures(1, &defaultWhiteTexture);
 
 #if _DEBUG
     // Cleanup
@@ -281,6 +304,8 @@ bool init()
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    defaultWhiteTexture = LoadDefaultWhiteTexture();
+
     return true;
 }
 
@@ -351,8 +376,38 @@ void render()
 
     PBR->Use();
     PBR->SetMat4("model", trans);
+    PBR->SetVec3("camPos", Camera::GetPosition());
+
+    for (int i = 0; i < 5; ++i) {
+        if (imageTextures[i] != nullptr) imageTextures[i]->Use(i);
+        else {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
+        }
+
+        std::string name = imageName[i];
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) 
+        {
+            return std::tolower(c); 
+        });
+
+        PBR->SetInt(name.append("Map"), i);
+    }
+
+    /*
+    PBR->SetVec3("dirLight.direction", light.Direction);
+    PBR->SetVec3("dirLight.ambient", light.Ambient);
+    PBR->SetVec3("dirLight.diffuse", light.Diffuse);
+    PBR->SetVec3("dirLight.specular", light.Specular);
+    PBR->SetBool("dirLight.on", light.On);
+    */
     glBindVertexArray(quadVAO);
+
+#if _DEBUG
     glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+#else
+    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+#endif
     glBindVertexArray(0);
 
     glDepthFunc(GL_LESS);
@@ -362,15 +417,15 @@ void render()
     glCullFace(GL_BACK);
 }
 
-GLuint LoadDefaultBlackTexture()
+GLuint LoadDefaultWhiteTexture()
 {
-    unsigned char blackPixel[3] = { 0, 0, 0 }; // czarna tekstura RGB
+    unsigned char whitePixel[3] = { 255, 255, 255 }; // czarna tekstura RGB
 
     GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, blackPixel);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -464,8 +519,6 @@ void init_imgui()
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
-
-    defaultBlackTexture = LoadDefaultBlackTexture();
 }
 
 void imgui_begin()
@@ -497,19 +550,21 @@ void imgui_render()
         {
             if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
             {
-                imageTextures[i] = new Texture2D(fileDialogInfos[i].resultPath.string().c_str());
+                TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGBA : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+                TextureFormat form = i == 0 ? TextureFormat::RGBA : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
+                imageTextures[i] = new Texture2D(fileDialogInfos[i].resultPath.string().c_str(), inter, form);
             }
         }
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 130);
 
-        if (imageTextures[i] != 0)
+        if (imageTextures[i] != nullptr)
         {
             ImGui::Image((void*)(intptr_t)imageTextures[i]->GetId(), ImVec2(128, 128));
         }
         else 
         {
-            ImGui::Image((void*)(intptr_t)defaultBlackTexture, ImVec2(128, 128));
+            ImGui::Image((void*)(intptr_t)defaultWhiteTexture, ImVec2(128, 128));
         }
     }
 
