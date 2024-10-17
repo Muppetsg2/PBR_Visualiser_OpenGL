@@ -1,46 +1,69 @@
 #include <Texture2D.h>
 
+void Texture2D::GenerateGLTexture(const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool detectFormat)
+{
+	this->_id = 0;
+	glGenTextures(1, &(this->_id));
+	glBindTexture(GL_TEXTURE_2D, this->_id);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)(this->_sWrapMode = sWrapMode));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)(this->_tWrapMode = tWrapMode));
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)(this->_minFilterMode = minFilterMode));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)(this->_magFilterMode = magFilterMode));
+
+	this->_format = format;
+	this->_fileFormat = fileFormat;
+
+	if (detectFormat) {
+		if (this->_channelsNum == 1) { this->_format = TextureFormat::RED; this->_fileFormat = this->_hdr ? TextureFileFormat::R32_FLOAT : TextureFileFormat::RED; }
+		else if (this->_channelsNum == 2) { this->_format = TextureFormat::RG; this->_fileFormat = this->_hdr ? TextureFileFormat::RG32_FLOAT : TextureFileFormat::RG; }
+		else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = this->_hdr ? TextureFileFormat::RGB32_FLOAT : TextureFileFormat::SRGB; }
+		else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = this->_hdr ? TextureFileFormat::RGBA32_FLOAT : TextureFileFormat::SRGBA; }
+	}
+}
+
 void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip, bool detectFormat)
 {
 	stbi_set_flip_vertically_on_load(flip);
 	this->_hdr = (std::filesystem::path(std::string(path)).extension().string() == std::string(".hdr"));
 
-	unsigned char* image = this->_hdr ? reinterpret_cast<unsigned char*>(stbi_loadf(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0)) : stbi_load(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
+	if (this->_hdr) {
+		float* image = stbi_loadf(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
 
-	if (image)
-	{
-		this->_path = path;
+		if (image) {
+			this->_path = path;
 
-		this->_id = 0;
-		glGenTextures(1, &(this->_id));
-		glBindTexture(GL_TEXTURE_2D, this->_id);
+			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)(this->_sWrapMode = sWrapMode));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)(this->_tWrapMode = tWrapMode));
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)(this->_minFilterMode = minFilterMode));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)(this->_magFilterMode = magFilterMode));
-
-		this->_format = format;
-		this->_fileFormat = fileFormat;
-
-		if (detectFormat) {
-			if (this->_channelsNum == 1) { this->_format = TextureFormat::RED; this->_fileFormat = this->_hdr ? TextureFileFormat::R16_FLOAT : TextureFileFormat::RED; }
-			else if (this->_channelsNum == 2) { this->_format = TextureFormat::RG; this->_fileFormat = this->_hdr ? TextureFileFormat::RG16_FLOAT : TextureFileFormat::RG; }
-			else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = this->_hdr ? TextureFileFormat::RGB16_FLOAT : TextureFileFormat::SRGB; }
-			else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = this->_hdr ? TextureFileFormat::RGBA16_FLOAT : TextureFileFormat::SRGBA; }
+			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_FLOAT, image);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		else {
+			spdlog::error("Failed to load texture: {}", path);
 		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, this->_hdr ? GL_FLOAT : GL_UNSIGNED_BYTE, image);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		stbi_image_free(image);
 	}
-	else
-	{
-		spdlog::error("Failed to load texture: {}", path);
-	}
+	else {
+		unsigned char* image = stbi_load(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
 
-	stbi_image_free(image);
-	return;
+		if (image) {
+			this->_path = path;
+
+			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
+
+			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_UNSIGNED_BYTE, image);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		else {
+			spdlog::error("Failed to load texture: {}", path);
+		}
+
+		stbi_image_free(image);
+	}
 }
 
 Texture2D::Texture2D()

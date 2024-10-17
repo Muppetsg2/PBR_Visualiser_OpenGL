@@ -9,6 +9,8 @@ private:
     static GLuint _texture;
     static Shader* _shader;
 
+    static GLuint _irradianceTexture;
+
     static bool _init;
     static bool _hdr;
 
@@ -24,4 +26,7 @@ public:
     static void Init(GLFWwindow* window, const GLchar* hdr);
     static void Draw();
     static void Deinit();
+
+    static void UseTexture(unsigned int samplerId);
+    static void UseIrradianceTexture(unsigned int samplerId);
 };

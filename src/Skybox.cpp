@@ -5,6 +5,8 @@ GLuint Skybox::_vao = 0;
 GLuint Skybox::_texture = 0;
 Shader* Skybox::_shader = nullptr;
 
+GLuint Skybox::_irradianceTexture = 0;
+
 bool Skybox::_init = false;
 bool Skybox::_hdr = false;
 
@@ -34,6 +36,20 @@ void Skybox::Init(GLFWwindow* window, const GLchar* faces[6])
 		return;
 	}
 
+	Shader* irradianceShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/irradiance.frag");
+
+	if (!irradianceShader->IsInitialized())
+	{
+		delete irradianceShader;
+		irradianceShader = nullptr;
+
+		delete Skybox::_shader;
+		Skybox::_shader = nullptr;
+
+		spdlog::error("Skybox irradiance shader could not be initialized!");
+		return;
+	}
+
 	Skybox::_window = window;
 
 	glGenVertexArrays(1, &Skybox::_vao);
@@ -57,23 +73,21 @@ void Skybox::Init(GLFWwindow* window, const GLchar* faces[6])
 
 	bool err = false;
 	int width, height, nrChannels;
+	GLenum inter = GL_SRGB;
+	GLenum format = GL_RGB;
 	for (size_t i = 0; i < 6; ++i)
 	{
-		bool isHDR = (std::filesystem::path(std::string(faces[i])).extension().string() == std::string(".hdr"));
-
 		Skybox::_paths[i] = faces[i];
 
-		unsigned char* data = isHDR ? reinterpret_cast<unsigned char*>(stbi_loadf(faces[i], &width, &height, &nrChannels, 0)) : stbi_load(faces[i], &width, &height, &nrChannels, 0);
+		unsigned char* data = stbi_load(faces[i], &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			GLenum inter = GL_SRGB;
-			GLenum format = GL_RGB;
-			if (nrChannels == 1) { format = GL_RED; inter = isHDR ? GL_R16F : GL_RED; }
-			else if (nrChannels == 2) { format = GL_RG; inter = isHDR ? GL_RG16F : GL_RG; }
-			else if (nrChannels == 3) { format = GL_RGB; inter = isHDR ? GL_RGB16F : GL_SRGB; }
-			else if (nrChannels == 4) { format = GL_RGBA; inter = isHDR ? GL_RGBA16F : GL_SRGB_ALPHA; }
+			if (nrChannels == 1) { format = GL_RED; inter = GL_RED; }
+			else if (nrChannels == 2) { format = GL_RG; inter = GL_RG; }
+			else if (nrChannels == 3) { format = GL_RGB; inter = GL_SRGB; }
+			else if (nrChannels == 4) { format = GL_RGBA; inter = GL_SRGB_ALPHA; }
 
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, inter, width, height, 0, format, isHDR ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, inter, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 			stbi_image_free(data);
 		}
 		else
@@ -105,6 +119,75 @@ void Skybox::Init(GLFWwindow* window, const GLchar* faces[6])
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+	GLuint captureFBO = 0, captureRBO = 0;
+	glGenFramebuffers(1, &captureFBO);
+	glGenRenderbuffers(1, &captureRBO);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
+
+	glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 captureViews[] =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+	// 2048 / 16
+	int irrSize = 32;
+	glGenTextures(1, &Skybox::_irradianceTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, irrSize, irrSize, 0, format, GL_UNSIGNED_INT, nullptr);
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, irrSize, irrSize);
+
+	irradianceShader->Use();
+	irradianceShader->SetInt("environmentMap", 0);
+	irradianceShader->SetMat4("projection", captureProjection);
+	irradianceShader->SetFloat("scale", 2.f);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glViewport(0, 0, irrSize, irrSize);
+	glCullFace(GL_FRONT);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		irradianceShader->SetMat4("view", captureViews[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Skybox::_irradianceTexture, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBindVertexArray(Skybox::_vao);
+		glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
+		glBindVertexArray(0);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glm::ivec2 s{};
+	glfwGetWindowSize(Skybox::_window, &s.x, &s.y);
+	glViewport(0, 0, s.x, s.y);
+	glCullFace(GL_BACK);
+
+	delete irradianceShader;
+	glDeleteFramebuffers(1, &captureFBO);
+	glDeleteRenderbuffers(1, &captureRBO);
+
 	Skybox::_init = true;
 }
 
@@ -112,6 +195,11 @@ void Skybox::Init(GLFWwindow* window, const GLchar* hdr)
 {
 	if (Skybox::_init) {
 		spdlog::info("Skybox already initialized!");
+		return;
+	}
+
+	if (!(std::filesystem::path(std::string(hdr)).extension().string() == std::string(".hdr"))) {
+		spdlog::error("Image was not a HDR image!");
 		return;
 	}
 
@@ -149,61 +237,17 @@ void Skybox::Init(GLFWwindow* window, const GLchar* hdr)
 
 	Skybox::_hdr = true;
 
-	Shader* panSh = new Shader("./res/shader/panorama.vert", "./res/shader/panorama.frag");
-
-	if (!panSh->IsInitialized()) 
-	{
-		delete panSh;
-		panSh = nullptr;
-
-		delete Skybox::_shader;
-		Skybox::_shader = nullptr;
-
-		glDeleteVertexArrays(1, &Skybox::_vao);
-		Skybox::_vao = 0;
-
-		Skybox::_window = nullptr;
-
-		spdlog::error("Skybox panorama shader could not be initialized!");
-		return;
-	}
-
-	if (!(std::filesystem::path(std::string(hdr)).extension().string() == std::string(".hdr")))
-	{
-		delete panSh;
-		panSh = nullptr;
-
-		delete Skybox::_shader;
-		Skybox::_shader = nullptr;
-
-		glDeleteVertexArrays(1, &Skybox::_vao);
-		Skybox::_vao = 0;
-
-		Skybox::_window = nullptr;
-
-		spdlog::error("Image was not a HDR image!");
-		return;
-	}
-
 	Skybox::_paths[0] = hdr;
 
-	GLuint panorama = 0;
-
-	glGenTextures(1, &panorama);
-	glBindTexture(GL_TEXTURE_2D, panorama);
-
+	GLuint hdrTexture = 0;
 	int width, height, nrChannels;
-	GLenum inter = GL_RGB16F;
-	GLenum format = GL_RGB;
-	unsigned char* data = reinterpret_cast<unsigned char*>(stbi_loadf(hdr, &width, &height, &nrChannels, 0));
+	stbi_set_flip_vertically_on_load(true);
+	float* data = stbi_loadf(hdr, &width, &height, &nrChannels, 0);
 	if (data)
 	{
-		if (nrChannels == 1) { format = GL_RED; inter = GL_R16F; }
-		else if (nrChannels == 2) { format = GL_RG; inter = GL_RG16F; }
-		else if (nrChannels == 3) { format = GL_RGB; inter = GL_RGB16F; }
-		else if (nrChannels == 4) { format = GL_RGBA; inter = GL_RGBA16F; }
-
-		glTexImage2D(GL_TEXTURE_2D, 0, inter, width, height, 0, format, GL_FLOAT, data);
+		glGenTextures(1, &hdrTexture);
+		glBindTexture(GL_TEXTURE_2D, hdrTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -211,90 +255,190 @@ void Skybox::Init(GLFWwindow* window, const GLchar* hdr)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glGenerateMipmap(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
 		stbi_image_free(data);
 	}
 	else
 	{
-		spdlog::error("Skybox panorama texture failed to load at path: {}", hdr);
 		stbi_image_free(data);
 
-		glDeleteTextures(1, &panorama);
-		panorama = 0;
+		Skybox::_paths[0] = "";
 
-		delete panSh;
-		panSh = nullptr;
-
-		delete Skybox::_shader;
-		Skybox::_shader = nullptr;
+		Skybox::_hdr = false;
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
 
 		Skybox::_window = nullptr;
 
+		delete Skybox::_shader;
+		Skybox::_shader = nullptr;
+
+		spdlog::error("Skybox equirectangular texture failed to load at path: {}", hdr);
 		return;
 	}
 
-	GLuint drawFBO = 0;
-	glGenFramebuffers(1, &drawFBO);
+	glm::ivec2 s{};
+	glfwGetWindowSize(Skybox::_window, &s.x, &s.y);
+	//int size = std::max(s.x, s.y);
+	int size = 2048;
+
+	Shader* equirectangularShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/equirectangular.frag");
+
+	if (!equirectangularShader->IsInitialized())
+	{
+		delete equirectangularShader;
+		equirectangularShader = nullptr;
+
+		glDeleteTextures(1, &hdrTexture);
+		hdrTexture = 0;
+
+		Skybox::_paths[0] = "";
+
+		Skybox::_hdr = false;
+
+		glDeleteVertexArrays(1, &Skybox::_vao);
+		Skybox::_vao = 0;
+
+		Skybox::_window = nullptr;
+
+		delete Skybox::_shader;
+		Skybox::_shader = nullptr;
+
+		spdlog::error("Skybox equirectangular shader could not be initialized!");
+		return;
+	}
+
+	Shader* irradianceShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/irradiance.frag");
+
+	if (!irradianceShader->IsInitialized())
+	{
+		delete irradianceShader;
+		irradianceShader = nullptr;
+
+		delete equirectangularShader;
+		equirectangularShader = nullptr;
+
+		glDeleteTextures(1, &hdrTexture);
+		hdrTexture = 0;
+
+		Skybox::_paths[0] = "";
+
+		Skybox::_hdr = false;
+
+		glDeleteVertexArrays(1, &Skybox::_vao);
+		Skybox::_vao = 0;
+
+		Skybox::_window = nullptr;
+
+		delete Skybox::_shader;
+		Skybox::_shader = nullptr;
+
+		spdlog::error("Skybox irradiance shader could not be initialized!");
+		return;
+	}
+
+	GLuint captureFBO = 0, captureRBO = 0;
+	glGenFramebuffers(1, &captureFBO);
+	glGenRenderbuffers(1, &captureRBO);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
 	glGenTextures(1, &Skybox::_texture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
-
-	//int size = std::max(width, height) / 4;
-	glm::ivec2 s{};
-	glfwGetWindowSize(Skybox::_window, &s.x, &s.y);
-	int size = std::max(s.x, s.y);
-	for (int i = 0; i < 6; ++i) {
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, size, size, 0, format, GL_UNSIGNED_INT, NULL);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
 	}
-
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 captureViews[] =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
 
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	equirectangularShader->Use();
+	equirectangularShader->SetInt("equirectangularMap", 0);
+	equirectangularShader->SetMat4("projection", captureProjection);
+	equirectangularShader->SetFloat("scale", 2.f);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, hdrTexture);
 
-	glBindVertexArray(1);
-
-	for (int i = 0; i < 6; ++i) {
-
-		glBindFramebuffer(GL_FRAMEBUFFER, drawFBO);
-
-		int side = i;
-
-		glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
-
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side, Skybox::_texture, 0);
-
-		glClearColor(0.5f, 0.5f, 0.5f, 1.f);
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glViewport(0, 0, size, size);
+	glCullFace(GL_FRONT);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		equirectangularShader->SetMat4("view", captureViews[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Skybox::_texture, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, size, size);
 
-		panSh->Use();
-
-		glActiveTexture(GL_TEXTURE0 + 1);
-		glBindTexture(GL_TEXTURE_2D, panorama);
-
-		panSh->SetInt("u_panorama", 1);
-		panSh->SetInt("u_currentFace", i);
-
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindVertexArray(Skybox::_vao);
+		glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
+		glBindVertexArray(0);
 	}
 
-	glDeleteFramebuffers(1, &drawFBO);
-	glDeleteTextures(1, &panorama);
+	//size / 16
+	int irrSize = 32;
+	glGenTextures(1, &Skybox::_irradianceTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, irrSize, irrSize, 0, GL_RGB, GL_FLOAT, nullptr);
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	delete panSh;
-	panSh = nullptr;
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, irrSize, irrSize);
+
+	irradianceShader->Use();
+	irradianceShader->SetInt("environmentMap", 0);
+	irradianceShader->SetMat4("projection", captureProjection);
+	irradianceShader->SetFloat("scale", 2.f);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+	glViewport(0, 0, irrSize, irrSize);
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		irradianceShader->SetMat4("view", captureViews[i]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Skybox::_irradianceTexture, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBindVertexArray(Skybox::_vao);
+		glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
+		glBindVertexArray(0);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glViewport(0, 0, s.x, s.y);
+	glCullFace(GL_BACK);
+
+	delete equirectangularShader;
+	delete irradianceShader;
+	glDeleteTextures(1, &hdrTexture);
+	glDeleteFramebuffers(1, &captureFBO);
+	glDeleteRenderbuffers(1, &captureRBO);
 
 	Skybox::_init = true;
 }
@@ -341,4 +485,16 @@ void Skybox::Deinit()
 			Skybox::_texture = 0;
 		}
 	}
+}
+
+void Skybox::UseTexture(unsigned int samplerId)
+{
+	glActiveTexture(GL_TEXTURE0 + samplerId);
+	glBindTexture(GL_TEXTURE_2D, Skybox::_texture);
+}
+
+void Skybox::UseIrradianceTexture(unsigned int samplerId)
+{
+	glActiveTexture(GL_TEXTURE0 + samplerId);
+	glBindTexture(GL_TEXTURE_2D, Skybox::_irradianceTexture);
 }

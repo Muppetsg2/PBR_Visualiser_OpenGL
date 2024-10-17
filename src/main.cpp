@@ -143,7 +143,7 @@ int main(int argc, char** argv)
         "./res/skybox/Tutorial/back.jpg"
     };
     */
-
+    /*
     const GLchar* faces[6] = {
         "./res/skybox/Park/posx.jpg",
         "./res/skybox/Park/negx.jpg",
@@ -154,6 +154,9 @@ int main(int argc, char** argv)
     };
 
     Skybox::Init(window, faces);
+    */
+
+    Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
 
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
