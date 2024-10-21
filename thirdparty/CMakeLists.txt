@@ -25,6 +25,12 @@ target_include_directories(stb_image_write PRIVATE ${STB_IMAGE_WRITE_DIR})
 # other
 CPMAddPackage("gh:glfw/glfw#3.4")
 CPMAddPackage("gh:g-truc/glm#1.0.1")
+# CPMAddPackage("gh:g-truc/gli#0.8.2.0")
+CPMAddPackage(
+  NAME gli
+  GIT_REPOSITORY https://github.com/g-truc/gli.git
+  GIT_TAG master
+)
 CPMAddPackage("gh:ocornut/imgui@1.91.3-docking")
 CPMAddPackage("gh:gabime/spdlog@1.14.1")
 
@@ -39,7 +45,8 @@ set_target_properties(glad
                       stb_image
                       stb_image_write
                       glfw 
-                      glm 
+                      glm
+                      gli
                       imgui 
                       spdlog PROPERTIES FOLDER "thirdparty")
 

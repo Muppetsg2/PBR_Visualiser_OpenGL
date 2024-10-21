@@ -15,7 +15,6 @@ extern "C" {
 #include <Skybox.h>
 #include <Camera.h>
 #include <Shape.h>
-#include <DirectionalLight.h>
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -88,19 +87,18 @@ const     char*   glsl_version     = "#version 450";
 constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
-Texture2D* imageTextures[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-std::string imageName[5] = { "Albedo", "Normal", "Metallic", "Roughness", "AO" };
+Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+std::string imageName[6] = { "Albedo", "Normal", "Metallic", "Displacement", "Roughness", "AO" };
 GLuint defaultWhiteTexture = 0;
 
 GLuint quadVAO = 0;
 Shader* PBR = nullptr;
 glm::mat4 trans = glm::mat4(1.f);
-
-DirectionalLight light;
+float height_scale = 0.04f;
 
 #if _DEBUG
-bool openFileDialogs[5] = { false, false, false, false, false };
-ImFileDialogInfo fileDialogInfos[5];
+bool openFileDialogs[6] = { false, false, false, false, false, false };
+ImFileDialogInfo fileDialogInfos[6];
 
 float cameraSpeed = 40.f;
 bool released = true;
@@ -144,6 +142,7 @@ int main(int argc, char** argv)
     };
     */
     /*
+    */
     const GLchar* faces[6] = {
         "./res/skybox/Park/posx.jpg",
         "./res/skybox/Park/negx.jpg",
@@ -154,9 +153,8 @@ int main(int argc, char** argv)
     };
 
     Skybox::Init(window, faces);
-    */
 
-    Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
+    //Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
 
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
@@ -186,12 +184,6 @@ int main(int argc, char** argv)
     glBindVertexArray(0);
 
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
-
-    light.Direction = glm::vec3(1.f, 0.f, 0.f);
-    light.Ambient = glm::vec3(1.f, 1.f, 1.f);
-    light.Diffuse = glm::vec3(1.f, 1.f, 1.f);
-    light.Specular = glm::vec3(1.f, 1.f, 1.f);
-    light.On = true;
 
 #if _DEBUG
     trans = glm::translate(trans, glm::vec3(6.f, 0.f, 0.f));
@@ -226,7 +218,7 @@ int main(int argc, char** argv)
     PBR = nullptr;
     Skybox::Deinit();
 
-    for (int i = 0; i < 5; ++i) 
+    for (int i = 0; i < 6; ++i) 
     {
         delete imageTextures[i];
         imageTextures[i] = nullptr;
@@ -307,6 +299,9 @@ bool init()
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    // Cubemap seams
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
     defaultWhiteTexture = LoadDefaultWhiteTexture();
 
     return true;
@@ -381,8 +376,9 @@ void render()
     PBR->SetMat4("model", trans);
     PBR->SetVec3("camPos", Camera::GetPosition());
 
-    for (int i = 0; i < 5; ++i) {
-        if (imageTextures[i] != nullptr) imageTextures[i]->Use(i);
+    for (int i = 0; i < 6; ++i) {
+        if (imageTextures[i] != nullptr) 
+            imageTextures[i]->Use(i);
         else {
             glActiveTexture(GL_TEXTURE0 + i);
             glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
@@ -397,13 +393,17 @@ void render()
         PBR->SetInt(name.append("Map"), i);
     }
 
-    /*
-    PBR->SetVec3("dirLight.direction", light.Direction);
-    PBR->SetVec3("dirLight.ambient", light.Ambient);
-    PBR->SetVec3("dirLight.diffuse", light.Diffuse);
-    PBR->SetVec3("dirLight.specular", light.Specular);
-    PBR->SetBool("dirLight.on", light.On);
-    */
+    PBR->SetFloat("height_scale", height_scale);
+
+    Skybox::UseIrradianceTexture(7);
+    PBR->SetInt("irradianceMap", 7);
+
+    Skybox::UsePrefilterTexture(8);
+    PBR->SetInt("prefilterMap", 8);
+
+    Skybox::UseBrdfLUTTexture(9);
+    PBR->SetInt("brdfLUT", 9);
+
     glBindVertexArray(quadVAO);
 
 #if _DEBUG
@@ -539,7 +539,7 @@ void imgui_render()
         return;
     }
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 6; ++i)
     {
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
         {
@@ -553,8 +553,8 @@ void imgui_render()
         {
             if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
             {
-                TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGBA : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
-                TextureFormat form = i == 0 ? TextureFormat::RGBA : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
+                TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+                TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
                 imageTextures[i] = new Texture2D(fileDialogInfos[i].resultPath.string().c_str(), inter, form);
             }
         }
@@ -570,6 +570,8 @@ void imgui_render()
             ImGui::Image((void*)(intptr_t)defaultWhiteTexture, ImVec2(128, 128));
         }
     }
+
+    ImGui::DragFloat("Height", &height_scale, 0.1f, 0.0f, FLT_MAX);
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 

@@ -21,6 +21,8 @@ void Texture2D::GenerateGLTexture(const TextureFileFormat& fileFormat, const Tex
 		else if (this->_channelsNum == 3) { this->_format = TextureFormat::RGB; this->_fileFormat = this->_hdr ? TextureFileFormat::RGB32_FLOAT : TextureFileFormat::SRGB; }
 		else if (this->_channelsNum == 4) { this->_format = TextureFormat::RGBA; this->_fileFormat = this->_hdr ? TextureFileFormat::RGBA32_FLOAT : TextureFileFormat::SRGBA; }
 	}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip, bool detectFormat)
@@ -36,6 +38,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 
 			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
 
+			glBindTexture(GL_TEXTURE_2D, this->_id);
 			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_FLOAT, image);
 			glGenerateMipmap(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -54,6 +57,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 
 			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
 
+			glBindTexture(GL_TEXTURE_2D, this->_id);
 			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_UNSIGNED_BYTE, image);
 			glGenerateMipmap(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, 0);

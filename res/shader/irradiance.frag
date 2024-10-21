@@ -7,8 +7,6 @@ in vec3 localPos;
 
 uniform samplerCube environmentMap;
 
-const float PI = 3.14159265359;
-
 void main()
 {
     vec3 normal = normalize(localPos);

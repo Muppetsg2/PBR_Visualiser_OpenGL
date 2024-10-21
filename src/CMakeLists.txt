@@ -56,6 +56,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glad
 												stb_image
 												stb_image_write
 												glfw
+												gli
 												spdlog
 												glm::glm)
 

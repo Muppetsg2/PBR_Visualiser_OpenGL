@@ -10,6 +10,8 @@ private:
     static Shader* _shader;
 
     static GLuint _irradianceTexture;
+    static GLuint _prefilterTexture;
+    static GLuint _brdfLUTTexture;
 
     static bool _init;
     static bool _hdr;
@@ -21,6 +23,12 @@ private:
     Skybox() = default;
     virtual ~Skybox() = default;
 
+    static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer);
+
+    static std::pair<bool, std::string> CheckFolder();
+    static void SaveData(std::string dir);
+    static bool LoadSavedData(std::string dir);
+
 public:
     static void Init(GLFWwindow* window, const GLchar* faces[6]);
     static void Init(GLFWwindow* window, const GLchar* hdr);
@@ -29,4 +37,6 @@ public:
 
     static void UseTexture(unsigned int samplerId);
     static void UseIrradianceTexture(unsigned int samplerId);
+    static void UsePrefilterTexture(unsigned int samplerId);
+    static void UseBrdfLUTTexture(unsigned int samplerId);
 };
