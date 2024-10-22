@@ -132,6 +132,8 @@ void Skybox::SaveData(std::string dir)
 				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, mipData.data());
 
 				std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(float));
+
+				mipData.clear();
 			}
 		}
 
@@ -154,6 +156,8 @@ void Skybox::SaveData(std::string dir)
 			glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB, GL_FLOAT, mipData.data());
 
 			std::memcpy(texCube[face].data(), mipData.data(), mipData.size() * sizeof(float));
+
+			mipData.clear();
 		}
 
 		if (gli::save_dds(texCube, dir + "\\irradiance.dds")) {
@@ -182,6 +186,8 @@ void Skybox::SaveData(std::string dir)
 				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, mipData.data());
 
 				std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(float));
+
+				mipData.clear();
 			}
 		}
 
@@ -196,7 +202,7 @@ void Skybox::SaveData(std::string dir)
 	}
 	else
 	{
-		GLint inter, nrChannels = 3, format = GL_RGB;
+		GLint inter, nrChannels = 3;
 		gli::format gFormat = gli::FORMAT_RGB8_SRGB_PACK8;
 
 		// Save Cubemap
@@ -209,22 +215,18 @@ void Skybox::SaveData(std::string dir)
 
 		switch (inter) {
 			case GL_RED:
-				format = GL_RED;
 				nrChannels = 1;
 				gFormat = gli::FORMAT_R8_SRGB_PACK8;
 				break;
 			case GL_RG:
-				format = GL_RG;
 				nrChannels = 2;
 				gFormat = gli::FORMAT_RG8_SRGB_PACK8;
 				break;
 			case GL_SRGB:
-				format = GL_RGB;
 				nrChannels = 3;
 				gFormat = gli::FORMAT_RGB8_SRGB_PACK8;
 				break;
 			case GL_SRGB_ALPHA:
-				format = GL_RGBA;
 				nrChannels = 4;
 				gFormat = gli::FORMAT_RGBA8_SRGB_PACK8;
 				break;
@@ -239,7 +241,7 @@ void Skybox::SaveData(std::string dir)
 				int mipHeight = std::max(1, height >> level);
 
 				std::vector<unsigned char> mipData(mipWidth * mipHeight * nrChannels);
-				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, format, GL_UNSIGNED_BYTE, mipData.data());
+				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, inter, GL_UNSIGNED_BYTE, mipData.data());
 
 				std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(unsigned char));
 			}
@@ -426,8 +428,6 @@ void Skybox::Init(GLFWwindow* window, const GLchar* faces[6])
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
