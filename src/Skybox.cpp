@@ -202,8 +202,8 @@ void Skybox::SaveData(std::string dir)
 	}
 	else
 	{
-		GLint inter, nrChannels = 3;
-		gli::format gFormat = gli::FORMAT_RGB8_SRGB_PACK8;
+		GLint inter, nrChannels = 3, format = GL_RGB;
+		gli::format gFormat = gli::FORMAT_RGB8_UNORM_PACK8;
 
 		// Save Cubemap
 		glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
@@ -215,20 +215,24 @@ void Skybox::SaveData(std::string dir)
 
 		switch (inter) {
 			case GL_RED:
+				format = GL_R;
 				nrChannels = 1;
-				gFormat = gli::FORMAT_R8_SRGB_PACK8;
+				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_RG:
+				format = GL_RG;
 				nrChannels = 2;
-				gFormat = gli::FORMAT_RG8_SRGB_PACK8;
+				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_SRGB:
+				format = GL_RGB;
 				nrChannels = 3;
-				gFormat = gli::FORMAT_RGB8_SRGB_PACK8;
+				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_SRGB_ALPHA:
+				format = GL_RGBA;
 				nrChannels = 4;
-				gFormat = gli::FORMAT_RGBA8_SRGB_PACK8;
+				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 		}
 
@@ -241,9 +245,31 @@ void Skybox::SaveData(std::string dir)
 				int mipHeight = std::max(1, height >> level);
 
 				std::vector<unsigned char> mipData(mipWidth * mipHeight * nrChannels);
-				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, inter, GL_UNSIGNED_BYTE, mipData.data());
+				glPixelStorei(GL_PACK_ALIGNMENT, 1);
+				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, format, GL_UNSIGNED_BYTE, mipData.data());
+				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-				std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(unsigned char));
+				if (nrChannels < 4) {
+					std::vector<unsigned char> newImage(mipWidth * mipHeight * 4);
+
+					for (int i = 0; i < mipWidth * mipHeight; ++i) {
+						int oldIndex = i * nrChannels;
+						int newIndex = i * 4;
+
+						std::memcpy(&newImage[newIndex], &mipData[oldIndex], sizeof(unsigned char) * nrChannels);
+
+						if (nrChannels < 3) {
+							std::memset(&newImage[newIndex + nrChannels], 0, sizeof(unsigned char) * (3 - nrChannels));
+						}
+
+						newImage[newIndex + 3] = 255;
+					}
+
+					std::memcpy(texCube[face][level].data(), newImage.data(), newImage.size() * sizeof(unsigned char));
+				}
+				else {
+					std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(unsigned char));
+				}
 			}
 		}
 
