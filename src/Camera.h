@@ -6,6 +6,7 @@ private:
 	static GLuint _uboMatrices;
 
 	static bool _init;
+	static bool _recalculate;
 
 	static float _near;
 	static float _far;
@@ -23,8 +24,10 @@ private:
 	static void OnTransformChange();
 
 	static GLFWwindow* _window;
+	static glm::ivec2 _windowSize;
 
 public:
+	static void Init(glm::ivec2 window_size);
 	static void Init(GLFWwindow* window);
 
 	static void UpdateFrontDir();

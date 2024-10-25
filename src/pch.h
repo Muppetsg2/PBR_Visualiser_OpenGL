@@ -1,5 +1,6 @@
 #pragma once
 
+#if _DEBUG
 // IMGUI
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 
@@ -7,6 +8,7 @@
 #include <imgui_impl/imgui_impl_glfw.h>
 #include <imgui_impl/imgui_impl_opengl3.h>
 #include <imgui_impl/imgui_filedialog.h>
+#endif
 
 // GLAD
 #include <glad/glad.h>  // Initialize with gladLoadGL()
@@ -39,5 +41,5 @@
 #include <algorithm>
 #include <cctype>
 #include <sys/stat.h>
-#include<sys/types.h>
+#include <sys/types.h>
 #include <direct.h>

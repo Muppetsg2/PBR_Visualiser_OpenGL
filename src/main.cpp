@@ -50,25 +50,21 @@ static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint i
         SPDLOG_WARN("GL CALLBACK: type = {0}, severity = {1}, message = {2}", typeS, severityS, message);
     }
 }
-#endif
 
 static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
     Camera::OnWindowSizeChange();
 }
+#endif
 
 bool init();
-
-void input();
-void update();
 void render();
-
 GLuint LoadDefaultWhiteTexture();
 
-void end_frame();
-
 #if _DEBUG
+void end_frame();
+void input();
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void init_imgui();
 void imgui_begin();
@@ -77,8 +73,13 @@ void imgui_end();
 #endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
-constexpr int32_t WINDOW_WIDTH = 1920;//800;
-constexpr int32_t WINDOW_HEIGHT = 1080;//800;
+#if _DEBUG
+constexpr int32_t WINDOW_WIDTH = 1920;
+constexpr int32_t WINDOW_HEIGHT = 1080;
+#else
+constexpr int32_t WINDOW_WIDTH = 2048;
+constexpr int32_t WINDOW_HEIGHT = 2048;
+#endif
 
 GLFWwindow* window = nullptr;
 
@@ -124,12 +125,31 @@ int main(int argc, char** argv)
     }
     spdlog::info("Initialized project.");
 
+#if !_DEBUG
+    for (int i = 1; i < argc; ++i) {
+        TextureFileFormat inter = i == 1 ? TextureFileFormat::SRGB : i == 2 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+        TextureFormat form = i == 1 ? TextureFormat::RGB : i == 2 ? TextureFormat::RGB : TextureFormat::RED;
+        imageTextures[i - 1] = new Texture2D(std::filesystem::absolute(std::filesystem::path(argv[i])).string().c_str(), inter, form);
+    }
+
+    int imagesSize = 6 - (argc - 1);
+
+    if (imagesSize != 0) {
+        for (int i = argc; i < argc + imagesSize; ++i) {
+            imageTextures[i - 1] = new Texture2D(defaultWhiteTexture);
+        }
+    }
+#endif
+
 #if _DEBUG
     init_imgui();
     spdlog::info("Initialized ImGui.");
+
+    Camera::Init(window);
+#else
+    Camera::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT));
 #endif
     
-    Camera::Init(window);
 
     /*
     const GLchar* faces[6] = {
@@ -142,7 +162,6 @@ int main(int argc, char** argv)
     };
     */
     /*
-    */
     const GLchar* faces[6] = {
         "./res/skybox/Park/posx.jpg",
         "./res/skybox/Park/negx.jpg",
@@ -153,8 +172,13 @@ int main(int argc, char** argv)
     };
 
     Skybox::Init(window, faces);
+    */
 
-    //Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
+#if _DEBUG
+    Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
+#else
+    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), "./res/skybox/rooitou_park_4k.hdr");
+#endif
 
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
@@ -186,33 +210,94 @@ int main(int argc, char** argv)
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
 
 #if _DEBUG
-    trans = glm::translate(trans, glm::vec3(6.f, 0.f, 0.f));
+    Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
+    trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
 #else
-    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+    Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
+    Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+    trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
     trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
 #endif
 
+#if _DEBUG
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         // Process I/O operations here
         input();
 
-        // Update game objects' state here
-        update();
-
         // OpenGL rendering code here
         render();
 
-#if _DEBUG
         // Draw ImGui
         imgui_begin();
         imgui_render(); // edit this function to add your own ImGui controls
         imgui_end(); // this call effectively renders ImGui
-#endif
+
         // End frame and swap buffers (double buffering)
         end_frame();
     }
+#else
+    GLuint FBO = 0, RBO = 0, resTex = 0;
+    glGenFramebuffers(1, &FBO);
+    glGenRenderbuffers(1, &RBO);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+    glGenTextures(1, &resTex);
+    glBindTexture(GL_TEXTURE_2D, resTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resTex, 0);
+
+    for (int i = 0; i < 3; ++i) {
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        render();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glfwPollEvents();
+        glfwMakeContextCurrent(window);
+        glfwSwapBuffers(window);
+    }
+
+    // Save Image
+    int width, height;
+    glBindTexture(GL_TEXTURE_2D, resTex);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+    unsigned char* data = new unsigned char[width * height * 3]; // GL_RGB
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+    stbi_flip_vertically_on_write(true);
+    int result = stbi_write_png(std::filesystem::path(".\\PBR_Image.png").string().c_str(), width, height, 3, data, 0);
+
+    if (result != 0) {
+        spdlog::info("File 'PBR_Image.png' saved in directory '{}'", std::filesystem::current_path().string());
+    }
+    else {
+        spdlog::error("There was an error while trying to save 'PBR_Image.png' in directory '{}'", std::filesystem::current_path().string());
+    }
+
+    delete[] data;
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glDeleteTextures(1, &resTex);
+    glDeleteRenderbuffers(1, &RBO);
+    glDeleteFramebuffers(1, &FBO);
+#endif
 
     delete PBR;
     PBR = nullptr;
@@ -231,10 +316,10 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-#endif
 
     glfwDestroyWindow(window);
     glfwTerminate();
+#endif
 
     return 0;
 }
@@ -259,6 +344,9 @@ bool init()
     glfwWindowHint(GLFW_OPENGL_PROFILE,        GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 
+#if !_DEBUG
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+#endif
     // Create window with graphics context
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, NULL, NULL);
     if (window == NULL)
@@ -270,7 +358,9 @@ bool init()
 
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
+#if _DEBUG
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
+#endif
 
     bool err = !gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -307,9 +397,92 @@ bool init()
     return true;
 }
 
+void render()
+{
+    // OpenGL Rendering code goes here
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+
+    PBR->Use();
+    PBR->SetMat4("model", trans);
+    PBR->SetVec3("camPos", Camera::GetPosition());
+
+    for (int i = 0; i < 6; ++i) {
+        if (imageTextures[i] != nullptr) 
+            imageTextures[i]->Use(i);
+        else {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
+        }
+
+        std::string name = imageName[i];
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) 
+        {
+            return std::tolower(c); 
+        });
+
+        PBR->SetInt(name.append("Map"), i);
+    }
+
+    PBR->SetFloat("height_scale", height_scale);
+
+    Skybox::UseIrradianceTexture(6);
+    PBR->SetInt("irradianceMap", 6);
+
+    Skybox::UsePrefilterTexture(7);
+    PBR->SetInt("prefilterMap", 7);
+
+    Skybox::UseBrdfLUTTexture(8);
+    PBR->SetInt("brdfLUT", 8);
+
+    glBindVertexArray(quadVAO);
+
+#if _DEBUG
+    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+#else
+    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+#endif
+    glBindVertexArray(0);
+
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
+    Skybox::Draw();
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
+}
+
+GLuint LoadDefaultWhiteTexture()
+{
+    unsigned char whitePixel[3] = { 255, 255, 255 }; // czarna tekstura RGB
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return textureID;
+}
+
+#if _DEBUG
+void end_frame()
+{
+    TimeManager::Update();
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    glfwPollEvents();
+    glfwMakeContextCurrent(window);
+    glfwSwapBuffers(window);
+}
+
 void input()
 {
-#if _DEBUG
     bool pressed = false;
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -358,102 +531,10 @@ void input()
     if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) != GLFW_REPEAT && glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_RELEASE) {
         released = true;
     }
-#endif
 }
-
-void update()
-{
-    // Update game objects' state here
-}
-
-void render()
-{
-    // OpenGL Rendering code goes here
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.f, 0.f, 0.f, 1.f);
-
-    PBR->Use();
-    PBR->SetMat4("model", trans);
-    PBR->SetVec3("camPos", Camera::GetPosition());
-
-    for (int i = 0; i < 6; ++i) {
-        if (imageTextures[i] != nullptr) 
-            imageTextures[i]->Use(i);
-        else {
-            glActiveTexture(GL_TEXTURE0 + i);
-            glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
-        }
-
-        std::string name = imageName[i];
-        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) 
-        {
-            return std::tolower(c); 
-        });
-
-        PBR->SetInt(name.append("Map"), i);
-    }
-
-    PBR->SetFloat("height_scale", height_scale);
-
-    Skybox::UseIrradianceTexture(7);
-    PBR->SetInt("irradianceMap", 7);
-
-    Skybox::UsePrefilterTexture(8);
-    PBR->SetInt("prefilterMap", 8);
-
-    Skybox::UseBrdfLUTTexture(9);
-    PBR->SetInt("brdfLUT", 9);
-
-    glBindVertexArray(quadVAO);
-
-#if _DEBUG
-    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
-#else
-    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
-#endif
-    glBindVertexArray(0);
-
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
-    Skybox::Draw();
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
-}
-
-GLuint LoadDefaultWhiteTexture()
-{
-    unsigned char whitePixel[3] = { 255, 255, 255 }; // czarna tekstura RGB
-
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    return textureID;
-}
-
-void end_frame()
-{
-    TimeManager::Update();
-    // Poll and handle events (inputs, window resize, etc.)
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    glfwPollEvents();
-    glfwMakeContextCurrent(window);
-    glfwSwapBuffers(window);
-}
-
-#if _DEBUG
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-
     if (mouseNotUsed)
     {
         lastX = xpos;
@@ -534,9 +615,22 @@ void imgui_begin()
 
 void imgui_render()
 {
-    if (!ImGui::Begin("PBR VISUALISER")) {
+    static bool _skyboxOpen = true;
+
+    if (!ImGui::Begin("PBR VISUALISER", nullptr, ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
         return;
+    }
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Windows##Menu")) {
+            if (ImGui::MenuItem("Skybox")) {
+                _skyboxOpen = true;
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
     }
 
     for (int i = 0; i < 6; ++i)
@@ -576,6 +670,8 @@ void imgui_render()
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
     ImGui::End();
+
+    if (_skyboxOpen) Skybox::DrawEditor(&_skyboxOpen);
 }
 
 void imgui_end()

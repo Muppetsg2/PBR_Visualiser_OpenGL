@@ -145,6 +145,7 @@ private:
 
 public:
 	Texture2D();
+	Texture2D(GLuint texId, glm::ivec2 size = glm::ivec2(1, 1), int channelsNum = 3, bool mipmap = false, bool hdr = false);
 	Texture2D(const Texture2D&& texture) noexcept;
 	Texture2D(const Texture2D& texture);
 	Texture2D(const GLchar* path, bool flip = false);

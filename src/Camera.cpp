@@ -3,6 +3,7 @@
 GLuint Camera::_uboMatrices = 0;
 
 bool Camera::_init = false;
+bool Camera::_recalculate = false;
 
 float Camera::_near = 0.1f;
 float Camera::_far = 1000.f;
@@ -17,6 +18,7 @@ glm::vec3 Camera::_position = glm::vec3(0.f, 0.f, 0.f);
 glm::vec3 Camera::_rotation = glm::vec3(0.f, 0.f, 0.f);
 
 GLFWwindow* Camera::_window = nullptr;
+glm::ivec2 Camera::_windowSize = glm::ivec2();
 
 void Camera::SetFrontDir(glm::vec3 dir)
 {
@@ -36,14 +38,10 @@ void Camera::OnTransformChange()
 	UpdateFrontDir();
 }
 
-void Camera::Init(GLFWwindow* window)
+void Camera::Init(glm::ivec2 window_size)
 {
-	if (window == nullptr) {
-		spdlog::error("Failed to initialize Camera. Window was nullptr!");
-		return;
-	}
-
-	Camera::_window = window;
+	Camera::_windowSize = window_size;
+	Camera::_recalculate = true;
 
 	UpdateFrontDir();
 
@@ -60,7 +58,23 @@ void Camera::Init(GLFWwindow* window)
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(Camera::GetViewMatrix()));
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+	Camera::_recalculate = false;
 	Camera::_init = true;
+}
+
+void Camera::Init(GLFWwindow* window)
+{
+	if (window == nullptr) {
+		spdlog::error("Failed to initialize Camera. Window was nullptr!");
+		return;
+	}
+
+	Camera::_window = window;
+
+	glm::ivec2 s{};
+	glfwGetWindowSize(Camera::_window, &s.x, &s.y);
+
+	Camera::Init(s);
 }
 
 void Camera::UpdateFrontDir()
@@ -130,10 +144,13 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix()
 {
-	if (!Camera::_init && Camera::_window == nullptr) return glm::mat4(1.f);
+	if (!Camera::_init && !Camera::_recalculate) return glm::mat4(1.f);
 
 	glm::ivec2 size{};
-	glfwGetWindowSize(Camera::_window, &size.x, &size.y);
+
+	if (Camera::_window != nullptr) glfwGetWindowSize(Camera::_window, &size.x, &size.y);
+	else size = Camera::_windowSize;
+
 	return glm::perspective(glm::radians(Camera::_fov), (size.y != 0) ? ((float)size.x / (float)size.y) : 0, Camera::_near, Camera::_far);
 }
 

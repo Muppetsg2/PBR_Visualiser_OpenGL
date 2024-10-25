@@ -31,23 +31,27 @@ CPMAddPackage(
   GIT_REPOSITORY https://github.com/g-truc/gli.git
   GIT_TAG master
 )
-CPMAddPackage("gh:ocornut/imgui@1.91.3-docking")
 CPMAddPackage("gh:gabime/spdlog@1.14.1")
 
-set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
-add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
-					     ${imgui_SOURCE_DIR}/imgui_demo.cpp
-					     ${imgui_SOURCE_DIR}/imgui_draw.cpp
-						 ${imgui_SOURCE_DIR}/imgui_tables.cpp
-					     ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
-						 
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    CPMAddPackage("gh:ocornut/imgui@1.91.3-docking")
+
+    set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
+    add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
+					         ${imgui_SOURCE_DIR}/imgui_demo.cpp
+					         ${imgui_SOURCE_DIR}/imgui_draw.cpp
+						     ${imgui_SOURCE_DIR}/imgui_tables.cpp
+					         ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+    
+    set_target_properties(imgui PROPERTIES FOLDER "thirdparty")
+endif()
+
 set_target_properties(glad
                       stb_image
                       stb_image_write
                       glfw 
                       glm
                       gli
-                      imgui 
                       spdlog PROPERTIES FOLDER "thirdparty")
 
 if (TARGET zlibstatic)

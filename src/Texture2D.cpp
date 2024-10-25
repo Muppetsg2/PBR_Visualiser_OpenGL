@@ -87,6 +87,46 @@ Texture2D::Texture2D()
 	_magFilterMode = TextureFilterMode::LINEAR;
 }
 
+Texture2D::Texture2D(GLuint texId, glm::ivec2 size, int channelsNum, bool mipmap, bool hdr)
+{
+	_id = texId;
+	_size = size;
+	_channelsNum = channelsNum;
+
+	_path = "";
+	_hdr = hdr;
+
+	switch (channelsNum) {
+		case 1: {
+			_format = TextureFormat::RED;
+			_fileFormat = hdr ? TextureFileFormat::RED : TextureFileFormat::R32_FLOAT;
+		}
+		case 2: {
+			_format = TextureFormat::RG;
+			_fileFormat = hdr ? TextureFileFormat::RG : TextureFileFormat::RG32_FLOAT;
+		}
+		case 3: {
+			_format = TextureFormat::RGB;
+			_fileFormat = hdr ? TextureFileFormat::SRGB : TextureFileFormat::RGB32_FLOAT;
+		}
+		case 4: {
+			_format = TextureFormat::RGBA;
+			_fileFormat = hdr ? TextureFileFormat::SRGBA : TextureFileFormat::RGBA32_FLOAT;
+		}
+	}
+
+	_sWrapMode = TextureWrapMode::MIRRORED_REPEAT;
+	_tWrapMode = TextureWrapMode::MIRRORED_REPEAT;
+	_minFilterMode = mipmap ? TextureFilterMode::NEAREST_MIPMAP_LINEAR : TextureFilterMode::LINEAR;
+	_magFilterMode = TextureFilterMode::LINEAR;
+
+	if (mipmap) {
+		glBindTexture(GL_TEXTURE_2D, _id);
+		glGenerateTextureMipmap(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+}
+
 Texture2D::Texture2D(const Texture2D&& texture) noexcept
 {
 	_id = texture._id;
