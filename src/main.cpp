@@ -1,4 +1,4 @@
-#if !_DEBUG
+#if !CONSOLE_ENABLED
 
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 
@@ -130,6 +130,7 @@ int main(int argc, char** argv)
         TextureFileFormat inter = i == 1 ? TextureFileFormat::SRGB : i == 2 ? TextureFileFormat::RGB : TextureFileFormat::RED;
         TextureFormat form = i == 1 ? TextureFormat::RGB : i == 2 ? TextureFormat::RGB : TextureFormat::RED;
         imageTextures[i - 1] = new Texture2D(std::filesystem::absolute(std::filesystem::path(argv[i])).string().c_str(), inter, form);
+        spdlog::info("Image: '{}' with path '{}' loaded!", imageName[i - 1], std::filesystem::absolute(std::filesystem::path(argv[i])).string().c_str());
     }
 
     int imagesSize = 6 - (argc - 1);
@@ -316,10 +317,10 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+#endif
 
     glfwDestroyWindow(window);
     glfwTerminate();
-#endif
 
     return 0;
 }
