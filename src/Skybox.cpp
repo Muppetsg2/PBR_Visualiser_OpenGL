@@ -120,7 +120,15 @@ void Skybox::SaveData(std::string dir)
 
 		maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-		gli::texture_cube texCube(gli::FORMAT_RGB32_SFLOAT_PACK32, gli::extent3d(width, height, 1), maxMipLevel);
+		std::ofstream outFile(dir + "\\cubemap_levels.info");
+		if (outFile) {
+			outFile << maxMipLevel;
+			outFile.close();
+			spdlog::info("File 'cubemap_levels.info' saved in directory '{}'", dir);
+		}
+		else {
+			spdlog::error("There was an error while trying to save 'cubemap_levels.info' in directory '{}'", dir);
+		}
 
 		for (int face = 0; face < 6; ++face) {
 			for (int level = 0; level < maxMipLevel; ++level) {
@@ -128,28 +136,32 @@ void Skybox::SaveData(std::string dir)
 				int mipWidth = std::max(1, width >> level);
 				int mipHeight = std::max(1, height >> level);
 
-				std::vector<float> mipData(mipWidth * mipHeight * 3); // GL_RGB32F
+				float* data = new float[mipWidth * mipHeight * 3]; // GL_RGB32F
 				glPixelStorei(GL_PACK_ALIGNMENT, 1);
-				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, mipData.data());
+				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, data);
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-				std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(float));
+				std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level) + ".hdr";
+				stbi_flip_vertically_on_write(true);
+				int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
 
-				mipData.clear();
+				if (result != 0) {
+					spdlog::info("File '{}' saved in directory '{}'", name, dir);
+				}
+				else {
+					spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, dir);
+				}
+
+				delete[] data;
+
 			}
 		}
 
-		if (gli::save_dds(texCube, dir + "\\cubemap.dds")) {
-			spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
-		}
-		else {
-			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
-		}
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	}
 	else
 	{
 		GLint inter, nrChannels = 3, format = GL_RGB;
-		gli::format gFormat = gli::FORMAT_RGB8_UNORM_PACK8;
 
 		// Save Cubemap
 		glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
@@ -159,30 +171,34 @@ void Skybox::SaveData(std::string dir)
 
 		maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
+		std::ofstream outFile(dir + "\\cubemap_levels.info");
+		if (outFile) {
+			outFile << maxMipLevel;
+			outFile.close();
+			spdlog::info("File 'cubemap_levels.info' saved in directory '{}'", dir);
+		}
+		else {
+			spdlog::error("There was an error while trying to save 'cubemap_levels.info' in directory '{}'", dir);
+		}
+
 		switch (inter) {
 			case GL_RED:
 				format = GL_R;
 				nrChannels = 1;
-				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_RG:
 				format = GL_RG;
 				nrChannels = 2;
-				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_SRGB:
 				format = GL_RGB;
 				nrChannels = 3;
-				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 			case GL_SRGB_ALPHA:
 				format = GL_RGBA;
 				nrChannels = 4;
-				gFormat = gli::FORMAT_RGBA8_UNORM_PACK8;
 				break;
 		}
-
-		gli::texture_cube texCube(gFormat, gli::extent3d(width, height, 1), maxMipLevel);
 
 		for (int face = 0; face < 6; ++face) {
 			for (int level = 0; level < maxMipLevel; ++level) {
@@ -190,40 +206,24 @@ void Skybox::SaveData(std::string dir)
 				int mipWidth = std::max(1, width >> level);
 				int mipHeight = std::max(1, height >> level);
 
-				std::vector<unsigned char> mipData(mipWidth * mipHeight * nrChannels);
+				float* data = new float[mipWidth * mipHeight * nrChannels];
 				glPixelStorei(GL_PACK_ALIGNMENT, 1);
-				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, format, GL_UNSIGNED_BYTE, mipData.data());
+				glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, format, GL_UNSIGNED_BYTE, data);
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-				if (nrChannels < 4) {
-					std::vector<unsigned char> newImage(mipWidth * mipHeight * 4);
+				std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level) + ".png";
+				stbi_flip_vertically_on_write(true);
+				int result = stbi_write_png(std::string(dir + "\\" + name).c_str(), width, height, nrChannels, data, 0);
 
-					for (int i = 0; i < mipWidth * mipHeight; ++i) {
-						int oldIndex = i * nrChannels;
-						int newIndex = i * 4;
-
-						std::memcpy(&newImage[newIndex], &mipData[oldIndex], sizeof(unsigned char) * nrChannels);
-
-						if (nrChannels < 3) {
-							std::memset(&newImage[newIndex + nrChannels], 0, sizeof(unsigned char) * (3 - nrChannels));
-						}
-
-						newImage[newIndex + 3] = 255;
-					}
-
-					std::memcpy(texCube[face][level].data(), newImage.data(), newImage.size() * sizeof(unsigned char));
+				if (result != 0) {
+					spdlog::info("File '{}' saved in directory '{}'", name, dir);
 				}
 				else {
-					std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(unsigned char));
+					spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, dir);
 				}
-			}
-		}
 
-		if (gli::save_dds(texCube, dir + "\\cubemap.dds")) {
-			spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
-		}
-		else {
-			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
+				delete[] data;
+			}
 		}
 	}
 
@@ -232,24 +232,25 @@ void Skybox::SaveData(std::string dir)
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_HEIGHT, &height);
 
-	gli::texture_cube texCube = gli::texture_cube(gli::FORMAT_RGB32_SFLOAT_PACK32, gli::extent3d(width, height, 1), 1);
-
 	for (int face = 0; face < 6; ++face) {
-		std::vector<float> mipData(width * height * 3); // GL_RGB32F
+
+		float* data = new float[width * height * 3]; // GL_RGB32F
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB, GL_FLOAT, mipData.data());
+		glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB, GL_FLOAT, data);
 		glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-		std::memcpy(texCube[face].data(), mipData.data(), mipData.size() * sizeof(float));
+		std::string name = "cubemap_" + std::to_string(face) + ".hdr";
+		stbi_flip_vertically_on_write(true);
+		int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
 
-		mipData.clear();
-	}
+		if (result != 0) {
+			spdlog::info("File '{}' saved in directory '{}'", name, dir);
+		}
+		else {
+			spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, dir);
+		}
 
-	if (gli::save_dds(texCube, dir + "\\irradiance.dds")) {
-		spdlog::info("File 'irradiance.dds' saved in directory '{}'", dir);
-	}
-	else {
-		spdlog::error("There was an error while trying to save 'irradiance.dds' in directory '{}'", dir);
+		delete[] data;
 	}
 
 	// Save Prefilter
@@ -259,7 +260,15 @@ void Skybox::SaveData(std::string dir)
 
 	maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-	texCube = gli::texture_cube(gli::FORMAT_RGB32_SFLOAT_PACK32, gli::extent3d(width, height, 1), maxMipLevel);
+	std::ofstream outFile(dir + "\\prefilter_levels.info");
+	if (outFile) {
+		outFile << maxMipLevel;
+		outFile.close();
+		spdlog::info("File 'prefilter_levels.info' saved in directory '{}'", dir);
+	}
+	else {
+		spdlog::error("There was an error while trying to save 'prefilter_levels.info' in directory '{}'", dir);
+	}
 
 	for (int face = 0; face < 6; ++face) {
 		for (int level = 0; level < maxMipLevel; ++level) {
@@ -267,22 +276,24 @@ void Skybox::SaveData(std::string dir)
 			int mipWidth = std::max(1, width >> level);
 			int mipHeight = std::max(1, height >> level);
 
-			std::vector<float> mipData(mipWidth * mipHeight * 3); // GL_RGB32F
+			float* data = new float[mipWidth * mipHeight * 3]; // GL_RGB32F
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
-			glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, mipData.data());
+			glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, GL_RGB, GL_FLOAT, data);
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-			std::memcpy(texCube[face][level].data(), mipData.data(), mipData.size() * sizeof(float));
+			std::string name = "prefilter_" + std::to_string(face) + "_" + std::to_string(level) + ".hdr";
+			stbi_flip_vertically_on_write(true);
+			int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
 
-			mipData.clear();
+			if (result != 0) {
+				spdlog::info("File '{}' saved in directory '{}'", name, dir);
+			}
+			else {
+				spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, dir);
+			}
+
+			delete[] data;
 		}
-	}
-
-	if (gli::save_dds(texCube, dir + "\\prefilter.dds")) {
-		spdlog::info("File 'prefilter.dds' saved in directory '{}'", dir);
-	}
-	else {
-		spdlog::error("There was an error while trying to save 'prefilter.dds' in directory '{}'", dir);
 	}
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
