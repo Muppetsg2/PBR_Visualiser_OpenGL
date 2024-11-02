@@ -184,42 +184,43 @@ int main(int argc, char** argv)
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
 
-#if _DEBUG
-    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
-#else
-    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
-#endif
+    glm::vec3 verts[4] = {
+        { -.5f, 0.f, -.5f  }, 
+        {  .5f, 0.f, -.5f  }, 
+        { -.5f, 0.f,  .5f  }, 
+        {  .5f, 0.f,  .5f  }
+    };
+
+    unsigned int indi[6] = {
+        2, 1, 0,
+        2, 3, 1
+    };
+
+    GLuint quadVBO, quadEBO;
+
+    glGenBuffers(1, &quadVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), verts, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &quadEBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indi, GL_STATIC_DRAW);
 
     // Vertices positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
-    glEnableVertexAttribArray(4);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
+    PBR = new Shader("./res/shader/basic2.vert", "./res/shader/basic2.frag");
 
-#if _DEBUG
-    Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
-    trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
-#else
     Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
     trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
     trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
     trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
-#endif
 
 #if _DEBUG
     // Main loop
@@ -437,12 +438,7 @@ void render()
     PBR->SetInt("brdfLUT", 8);
 
     glBindVertexArray(quadVAO);
-
-#if _DEBUG
-    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
-#else
     glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
-#endif
     glBindVertexArray(0);
 
     glDepthFunc(GL_LESS);
