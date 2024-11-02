@@ -120,14 +120,20 @@ void Skybox::SaveData(std::string dir)
 
 		maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-		std::ofstream outFile(dir + "\\cubemap_levels.info");
+		std::ofstream outFile(dir + "\\cubemap.info");
 		if (outFile) {
 			outFile << maxMipLevel;
+			outFile << width;
+			outFile << height;
+			outFile << GL_RGB;
+			outFile << GL_RGB32F;
+			outFile << GL_FLOAT;
+			outFile << true;
 			outFile.close();
-			spdlog::info("File 'cubemap_levels.info' saved in directory '{}'", dir);
+			spdlog::info("File 'cubemap.info' saved in directory '{}'", dir);
 		}
 		else {
-			spdlog::error("There was an error while trying to save 'cubemap_levels.info' in directory '{}'", dir);
+			spdlog::error("There was an error while trying to save 'cubemap.info' in directory '{}'", dir);
 		}
 
 		for (int face = 0; face < 6; ++face) {
@@ -171,16 +177,6 @@ void Skybox::SaveData(std::string dir)
 
 		maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-		std::ofstream outFile(dir + "\\cubemap_levels.info");
-		if (outFile) {
-			outFile << maxMipLevel;
-			outFile.close();
-			spdlog::info("File 'cubemap_levels.info' saved in directory '{}'", dir);
-		}
-		else {
-			spdlog::error("There was an error while trying to save 'cubemap_levels.info' in directory '{}'", dir);
-		}
-
 		switch (inter) {
 			case GL_RED:
 				format = GL_R;
@@ -198,6 +194,22 @@ void Skybox::SaveData(std::string dir)
 				format = GL_RGBA;
 				nrChannels = 4;
 				break;
+		}
+
+		std::ofstream outFile(dir + "\\cubemap.info");
+		if (outFile) {
+			outFile << maxMipLevel;
+			outFile << width;
+			outFile << height;
+			outFile << format;
+			outFile << inter;
+			outFile << GL_UNSIGNED_BYTE;
+			outFile << false;
+			outFile.close();
+			spdlog::info("File 'cubemap.info' saved in directory '{}'", dir);
+		}
+		else {
+			spdlog::error("There was an error while trying to save 'cubemap.info' in directory '{}'", dir);
 		}
 
 		for (int face = 0; face < 6; ++face) {
@@ -232,6 +244,21 @@ void Skybox::SaveData(std::string dir)
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_HEIGHT, &height);
 
+	std::ofstream outFile(dir + "\\irradiance.info");
+	if (outFile) {
+		outFile << 1;
+		outFile << width;
+		outFile << height;
+		outFile << GL_RGB;
+		outFile << GL_RGB32F;
+		outFile << GL_FLOAT;
+		outFile.close();
+		spdlog::info("File 'irradiance.info' saved in directory '{}'", dir);
+	}
+	else {
+		spdlog::error("There was an error while trying to save 'irradiance.info' in directory '{}'", dir);
+	}
+
 	for (int face = 0; face < 6; ++face) {
 
 		float* data = new float[width * height * 3]; // GL_RGB32F
@@ -260,14 +287,19 @@ void Skybox::SaveData(std::string dir)
 
 	maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-	std::ofstream outFile(dir + "\\prefilter_levels.info");
+	std::ofstream outFile(dir + "\\prefilter.info");
 	if (outFile) {
 		outFile << maxMipLevel;
+		outFile << width;
+		outFile << height;
+		outFile << GL_RGB;
+		outFile << GL_RGB32F;
+		outFile << GL_FLOAT;
 		outFile.close();
-		spdlog::info("File 'prefilter_levels.info' saved in directory '{}'", dir);
+		spdlog::info("File 'prefilter.info' saved in directory '{}'", dir);
 	}
 	else {
-		spdlog::error("There was an error while trying to save 'prefilter_levels.info' in directory '{}'", dir);
+		spdlog::error("There was an error while trying to save 'prefilter.info' in directory '{}'", dir);
 	}
 
 	for (int face = 0; face < 6; ++face) {
@@ -327,40 +359,76 @@ void Skybox::SaveData(std::string dir)
 
 bool Skybox::LoadSavedData(std::string dir)
 {
-	gli::texture_cube texCube = (gli::texture_cube)gli::load_dds(dir + "\\cubemap.dds");
-	if (texCube.empty()) {
-		spdlog::error("An error occurred while reading file 'cubemap.dds' from directory: {}", dir);
+	GLint maxLevels, width, height;
+	GLenum format, inter, type;
+	bool hdr = false;
+	std::ifstream inFile(dir + "\\cubemap.info");
+	if (inFile) {
+		inFile >> maxLevels;
+		inFile >> width;
+		inFile >> height;
+		inFile >> format;
+		inFile >> inter;
+		inFile >> type;
+		inFile >> hdr;
+		inFile.close();
+	}
+	else {
+		spdlog::error("An error occurred while reading file 'cubemap.info' from directory: {}", dir);
 		return false;
 	}
 
-	gli::gl GL(gli::gl::PROFILE_GL33);
-	gli::gl::format Format = GL.translate(texCube.format(), texCube.swizzles());
-
-	GLenum target = GL.translate(texCube.target());
 	glGenTextures(1, &Skybox::_texture);
-	glBindTexture(target, Skybox::_texture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 
-	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, (GLint)(texCube.levels() - 1));
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, (maxLevels - 1));
 
-	gli::ivec2 extent = texCube.extent();
-	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
+	glTexStorage2D(GL_TEXTURE_CUBE_MAP, maxLevels, inter, width, height);
 
-	for (std::size_t face = 0; face < texCube.faces(); ++face) {
-		for (std::size_t level = 0; level < texCube.levels(); ++level) {
-			glm::ivec2 levelExtent(texCube.extent(level));
-			glTexSubImage2D(
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-				(GLint)level,
-				0, 0,
-				levelExtent.x, levelExtent.y,
-				Format.External, Format.Type,
-				texCube.data(0, face, level)
-			);
+	for (std::size_t face = 0; face < 6; ++face) {
+		for (std::size_t level = 0; level < maxLevels; ++level) {
+
+			int mipWidth = std::max(1, width >> level);
+			int mipHeight = std::max(1, height >> level);
+
+			std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level);
+			if (hdr) {
+				stbi_set_flip_vertically_on_load(true);
+				float* data = stbi_loadf(std::string(dir + "\\" + name + ".hdr").c_str(), &width, &height, nullptr, 0);
+
+				if (!data) {
+					spdlog::error("Error occured while trying to load HDR image '{}' in directory: {}", name + ".hdr", dir);
+
+					glDeleteTextures(1, &Skybox::_texture);
+					Skybox::_texture = 0;
+
+					stbi_image_free(data);
+					return false;
+				}
+
+				glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, (GLint)level, 0, 0, mipWidth, mipHeight, format, type, data);
+			}
+			else {
+				int channels = 0;
+				unsigned char* data = stbi_load(std::string(dir + "\\" + name + ".png").c_str(), &width, &height, &channels, 0);
+
+				if (!data) {
+					spdlog::error("Error occured while trying to load image '{}' in directory: {}", name + ".png", dir);
+
+					glDeleteTextures(1, &Skybox::_texture);
+					Skybox::_texture = 0;
+
+					stbi_image_free(data);
+					return false;
+				}
+
+				glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, (GLint)level, 0, 0, mipWidth, mipHeight, format, type, data);
+			}
 		}
 	}
 
-	glBindTexture(target, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 	spdlog::info("Cubemap Texture loaded!");
 
@@ -452,7 +520,7 @@ bool Skybox::LoadSavedData(std::string dir)
 	float* data = stbi_loadf(std::string(dir + "\\brdfLUT.hdr").c_str(), &width, &height, &channels, 0);
 
 	if (!data) {
-		spdlog::error("Error occured while trying to load HDR image 'brdfLUT' in directory: {}", dir);
+		spdlog::error("Error occured while trying to load HDR image 'brdfLUT.hdr' in directory: {}", dir);
 
 		glDeleteTextures(1, &Skybox::_prefilterTexture);
 		Skybox::_prefilterTexture = 0;
