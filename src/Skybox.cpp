@@ -122,12 +122,12 @@ void Skybox::SaveData(std::string dir)
 
 		std::ofstream outFile(dir + "\\cubemap.info");
 		if (outFile) {
-			outFile << maxMipLevel;
-			outFile << width;
-			outFile << height;
-			outFile << GL_RGB;
-			outFile << GL_RGB32F;
-			outFile << GL_FLOAT;
+			outFile << maxMipLevel << "\n";
+			outFile << width << "\n";
+			outFile << height << "\n";
+			outFile << GL_RGB << "\n";
+			outFile << GL_RGB32F << "\n";
+			outFile << GL_FLOAT << "\n";
 			outFile << true;
 			outFile.close();
 			spdlog::info("File 'cubemap.info' saved in directory '{}'", dir);
@@ -148,8 +148,8 @@ void Skybox::SaveData(std::string dir)
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 				std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level) + ".hdr";
-				stbi_flip_vertically_on_write(true);
-				int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
+				//stbi_flip_vertically_on_write(true);
+				int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), mipWidth, mipHeight, 3, data);
 
 				if (result != 0) {
 					spdlog::info("File '{}' saved in directory '{}'", name, dir);
@@ -198,12 +198,12 @@ void Skybox::SaveData(std::string dir)
 
 		std::ofstream outFile(dir + "\\cubemap.info");
 		if (outFile) {
-			outFile << maxMipLevel;
-			outFile << width;
-			outFile << height;
-			outFile << format;
-			outFile << inter;
-			outFile << GL_UNSIGNED_BYTE;
+			outFile << maxMipLevel << "\n";
+			outFile << width << "\n";
+			outFile << height << "\n";
+			outFile << format << "\n";
+			outFile << inter << "\n";
+			outFile << GL_UNSIGNED_BYTE << "\n";
 			outFile << false;
 			outFile.close();
 			spdlog::info("File 'cubemap.info' saved in directory '{}'", dir);
@@ -224,8 +224,8 @@ void Skybox::SaveData(std::string dir)
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 				std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level) + ".png";
-				stbi_flip_vertically_on_write(true);
-				int result = stbi_write_png(std::string(dir + "\\" + name).c_str(), width, height, nrChannels, data, 0);
+				//stbi_flip_vertically_on_write(true);
+				int result = stbi_write_png(std::string(dir + "\\" + name).c_str(), mipWidth, mipHeight, nrChannels, data, 0);
 
 				if (result != 0) {
 					spdlog::info("File '{}' saved in directory '{}'", name, dir);
@@ -246,12 +246,13 @@ void Skybox::SaveData(std::string dir)
 
 	std::ofstream outFile(dir + "\\irradiance.info");
 	if (outFile) {
-		outFile << 1;
-		outFile << width;
-		outFile << height;
-		outFile << GL_RGB;
-		outFile << GL_RGB32F;
-		outFile << GL_FLOAT;
+		outFile << 1 << "\n";
+		outFile << width << "\n";
+		outFile << height << "\n";
+		outFile << GL_RGB << "\n";
+		outFile << GL_RGB32F << "\n";
+		outFile << GL_FLOAT << "\n";
+		outFile << true;
 		outFile.close();
 		spdlog::info("File 'irradiance.info' saved in directory '{}'", dir);
 	}
@@ -266,8 +267,8 @@ void Skybox::SaveData(std::string dir)
 		glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB, GL_FLOAT, data);
 		glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-		std::string name = "cubemap_" + std::to_string(face) + ".hdr";
-		stbi_flip_vertically_on_write(true);
+		std::string name = "irradiance_" + std::to_string(face) + ".hdr";
+		//stbi_flip_vertically_on_write(true);
 		int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
 
 		if (result != 0) {
@@ -287,14 +288,15 @@ void Skybox::SaveData(std::string dir)
 
 	maxMipLevel = 1 + floor(log2(std::max(width, height)));
 
-	std::ofstream outFile(dir + "\\prefilter.info");
+	outFile = std::ofstream(dir + "\\prefilter.info");
 	if (outFile) {
-		outFile << maxMipLevel;
-		outFile << width;
-		outFile << height;
-		outFile << GL_RGB;
-		outFile << GL_RGB32F;
-		outFile << GL_FLOAT;
+		outFile << maxMipLevel << "\n";
+		outFile << width << "\n";
+		outFile << height << "\n";
+		outFile << GL_RGB << "\n";
+		outFile << GL_RGB32F << "\n";
+		outFile << GL_FLOAT << "\n";
+		outFile << true;
 		outFile.close();
 		spdlog::info("File 'prefilter.info' saved in directory '{}'", dir);
 	}
@@ -314,8 +316,8 @@ void Skybox::SaveData(std::string dir)
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 			std::string name = "prefilter_" + std::to_string(face) + "_" + std::to_string(level) + ".hdr";
-			stbi_flip_vertically_on_write(true);
-			int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), width, height, 3, data);
+			//stbi_flip_vertically_on_write(true);
+			int result = stbi_write_hdr(std::string(dir + "\\" + name).c_str(), mipWidth, mipHeight, 3, data);
 
 			if (result != 0) {
 				spdlog::info("File '{}' saved in directory '{}'", name, dir);
@@ -386,6 +388,8 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	glTexStorage2D(GL_TEXTURE_CUBE_MAP, maxLevels, inter, width, height);
 
+	int x, y, channels;
+
 	for (std::size_t face = 0; face < 6; ++face) {
 		for (std::size_t level = 0; level < maxLevels; ++level) {
 
@@ -394,8 +398,8 @@ bool Skybox::LoadSavedData(std::string dir)
 
 			std::string name = "cubemap_" + std::to_string(face) + "_" + std::to_string(level);
 			if (hdr) {
-				stbi_set_flip_vertically_on_load(true);
-				float* data = stbi_loadf(std::string(dir + "\\" + name + ".hdr").c_str(), &width, &height, nullptr, 0);
+				//stbi_set_flip_vertically_on_load(true);
+				float* data = stbi_loadf(std::string(dir + "\\" + name + ".hdr").c_str(), &x, &y, &channels, 0);
 
 				if (!data) {
 					spdlog::error("Error occured while trying to load HDR image '{}' in directory: {}", name + ".hdr", dir);
@@ -408,10 +412,11 @@ bool Skybox::LoadSavedData(std::string dir)
 				}
 
 				glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, (GLint)level, 0, 0, mipWidth, mipHeight, format, type, data);
+
+				stbi_image_free(data);
 			}
 			else {
-				int channels = 0;
-				unsigned char* data = stbi_load(std::string(dir + "\\" + name + ".png").c_str(), &width, &height, &channels, 0);
+				unsigned char* data = stbi_load(std::string(dir + "\\" + name + ".png").c_str(), &x, &y, &channels, 0);
 
 				if (!data) {
 					spdlog::error("Error occured while trying to load image '{}' in directory: {}", name + ".png", dir);
@@ -424,6 +429,8 @@ bool Skybox::LoadSavedData(std::string dir)
 				}
 
 				glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, (GLint)level, 0, 0, mipWidth, mipHeight, format, type, data);
+
+				stbi_image_free(data);
 			}
 		}
 	}
@@ -432,11 +439,19 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	spdlog::info("Cubemap Texture loaded!");
 
-	texCube.clear();
-
-	texCube = (gli::texture_cube)gli::load_dds(dir + "\\irradiance.dds");
-	if (texCube.empty()) {
-		spdlog::error("An error occurred while reading file 'irradiance.dds' from directory: {}", dir);
+	inFile = std::ifstream(dir + "\\irradiance.info");
+	if (inFile) {
+		inFile >> maxLevels;
+		inFile >> width;
+		inFile >> height;
+		inFile >> format;
+		inFile >> inter;
+		inFile >> type;
+		inFile >> hdr;
+		inFile.close();
+	}
+	else {
+		spdlog::error("An error occurred while reading file 'irradiance.info' from directory: {}", dir);
 
 		glDeleteTextures(1, &Skybox::_texture);
 		Skybox::_texture = 0;
@@ -444,37 +459,56 @@ bool Skybox::LoadSavedData(std::string dir)
 		return false;
 	}
 
-	Format = GL.translate(texCube.format(), texCube.swizzles());
-
-	target = GL.translate(texCube.target());
 	glGenTextures(1, &Skybox::_irradianceTexture);
-	glBindTexture(target, Skybox::_irradianceTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
 
-	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, (GLint)(texCube.levels() - 1));
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, (maxLevels - 1));
 
-	extent = texCube.extent();
-	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
+	glTexStorage2D(GL_TEXTURE_CUBE_MAP, maxLevels, inter, width, height);
 
-	for (std::size_t face = 0; face < texCube.faces(); ++face) {
-		glTexSubImage2D(
-			GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-			0, 0, 0,
-			extent.x, extent.y,
-			Format.External, Format.Type,
-			texCube.data(0, face, 0)
-		);
+	for (std::size_t face = 0; face < 6; ++face) {
+
+		std::string name = "irradiance_" + std::to_string(face) + ".hdr";
+
+		//stbi_set_flip_vertically_on_load(true);
+		float* data = stbi_loadf(std::string(dir + "\\" + name).c_str(), &x, &y, &channels, 0);
+
+		if (!data) {
+			spdlog::error("Error occured while trying to load HDR image '{}' in directory: {}", name, dir);
+
+			glDeleteTextures(1, &Skybox::_irradianceTexture);
+			Skybox::_irradianceTexture = 0;
+
+			glDeleteTextures(1, &Skybox::_texture);
+			Skybox::_texture = 0;
+
+			stbi_image_free(data);
+			return false;
+		}
+
+		glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, 0, 0, width, height, format, type, data);
+
+		stbi_image_free(data);
 	}
 
-	glBindTexture(target, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 	spdlog::info("Irradiance Texture loaded!");
 
-	texCube.clear();
-
-	texCube = (gli::texture_cube)gli::load_dds(dir + "\\prefilter.dds");
-	if (texCube.empty()) {
-		spdlog::error("An error occurred while reading file 'prefilter.dds' from directory: {}", dir);
+	inFile = std::ifstream(dir + "\\prefilter.info");
+	if (inFile) {
+		inFile >> maxLevels;
+		inFile >> width;
+		inFile >> height;
+		inFile >> format;
+		inFile >> inter;
+		inFile >> type;
+		inFile >> hdr;
+		inFile.close();
+	}
+	else {
+		spdlog::error("An error occurred while reading file 'prefilter.info' from directory: {}", dir);
 
 		glDeleteTextures(1, &Skybox::_irradianceTexture);
 		Skybox::_irradianceTexture = 0;
@@ -485,37 +519,51 @@ bool Skybox::LoadSavedData(std::string dir)
 		return false;
 	}
 
-	Format = GL.translate(texCube.format(), texCube.swizzles());
-
-	target = GL.translate(texCube.target());
 	glGenTextures(1, &Skybox::_prefilterTexture);
-	glBindTexture(target, Skybox::_prefilterTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_prefilterTexture);
 
-	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
-	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, (GLint)(texCube.levels() - 1));
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BASE_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, (maxLevels - 1));
 
-	extent = texCube.extent();
-	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
+	glTexStorage2D(GL_TEXTURE_CUBE_MAP, maxLevels, inter, width, height);
 
-	for (std::size_t face = 0; face < texCube.faces(); ++face) {
-		for (std::size_t level = 0; level < texCube.levels(); ++level) {
-			glm::ivec2 levelExtent(texCube.extent(level));
-			glTexSubImage2D(
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-				(GLint)level,
-				0, 0,
-				levelExtent.x, levelExtent.y,
-				Format.External, Format.Type,
-				texCube.data(0, face, level)
-			);
+	for (std::size_t face = 0; face < 6; ++face) {
+		for (std::size_t level = 0; level < maxLevels; ++level) {
+
+			int mipWidth = std::max(1, width >> level);
+			int mipHeight = std::max(1, height >> level);
+
+			std::string name = "prefilter_" + std::to_string(face) + "_" + std::to_string(level) + ".hdr";
+
+			//stbi_set_flip_vertically_on_load(true);
+			float* data = stbi_loadf(std::string(dir + "\\" + name).c_str(), &x, &y, &channels, 0);
+
+			if (!data) {
+				spdlog::error("Error occured while trying to load HDR image '{}' in directory: {}", name, dir);
+
+				glDeleteTextures(1, &Skybox::_prefilterTexture);
+				Skybox::_prefilterTexture = 0;
+
+				glDeleteTextures(1, &Skybox::_irradianceTexture);
+				Skybox::_irradianceTexture = 0;
+
+				glDeleteTextures(1, &Skybox::_texture);
+				Skybox::_texture = 0;
+
+				stbi_image_free(data);
+				return false;
+			}
+
+			glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, (GLint)level, 0, 0, mipWidth, mipHeight, format, type, data);
+
+			stbi_image_free(data);
 		}
 	}
 
-	glBindTexture(target, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
 	spdlog::info("Prefilter Texture loaded!");
 
-	int width, height, channels;
 	stbi_set_flip_vertically_on_load(true);
 	float* data = stbi_loadf(std::string(dir + "\\brdfLUT.hdr").c_str(), &width, &height, &channels, 0);
 
