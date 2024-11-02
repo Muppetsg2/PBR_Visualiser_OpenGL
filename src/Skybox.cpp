@@ -441,7 +441,7 @@ bool Skybox::LoadSavedData(std::string dir)
 	float* data = stbi_loadf(std::string(dir + "\\brdfLUT.hdr").c_str(), &width, &height, &channels, 0);
 
 	if (!data) {
-		spdlog::error("Error occured while trying to load HDR image 'brdfLUT' in directory: {}", dir);
+		spdlog::error("Error occured while trying to load HDR image 'brdfLUT.hdr' in directory: {}", dir);
 
 		glDeleteTextures(1, &Skybox::_prefilterTexture);
 		Skybox::_prefilterTexture = 0;
