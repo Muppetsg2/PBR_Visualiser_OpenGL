@@ -1,7 +1,5 @@
 #version 450 core
 
-#define POINT_LIGHTS 1
-
 layout (location = 0) in vec3 position;
 
 out VS_OUT {
