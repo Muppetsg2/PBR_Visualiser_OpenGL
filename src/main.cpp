@@ -185,10 +185,10 @@ int main(int argc, char** argv)
     glBindVertexArray(quadVAO);
 
     glm::vec3 verts[4] = {
-        { -.5f, 0.f, -.5f  }, 
-        {  .5f, 0.f, -.5f  }, 
-        { -.5f, 0.f,  .5f  }, 
-        {  .5f, 0.f,  .5f  }
+        { 0.f, -.5f, -.5f },
+        {  0.f, -.5f, .5f  }, 
+        { 0.f, .5f,  -.5f  }, 
+        {  0.f, .5f,  .5f  }
     };
 
     unsigned int indi[6] = {
@@ -218,9 +218,7 @@ int main(int argc, char** argv)
 
     Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
-    trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
-    trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
-    trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+    trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
 
 #if _DEBUG
     // Main loop
