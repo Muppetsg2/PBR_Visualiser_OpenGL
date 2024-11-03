@@ -15,7 +15,6 @@ out VS_OUT {
     vec3 WorldPos;
     vec3 TangentViewPos;
     vec3 TangentWorldPos;
-    vec3 TangentLightPositions[POINT_LIGHTS];
     mat3 TBN;
 } vs_out;
 
@@ -23,11 +22,11 @@ uniform vec3 camPos;
 
 uniform mat4 model;
 
-uniform vec3 lightPositions[POINT_LIGHTS];
-
 void main()  
 {  
-    gl_Position = projection * view * model * vec4(position, 1.0);
+    //gl_Position = projection * view * model * vec4(position, 1.0);
+    gl_Position = vec4(position.x * 2.0, position.z * -2.0, 0.0 , 1.0);
+    // position = vec3(x / width, 0.0, y / height) - vec3(0.5, 0.0, 0.5)
     vs_out.TexCoords = vec2(position.x, position.z) + vec2(0.5);
     vs_out.WorldPos = vec3(model * vec4(position, 1.0));
 
@@ -39,9 +38,4 @@ void main()
 
     vs_out.TangentViewPos = TBN * camPos;
     vs_out.TangentWorldPos = TBN * vs_out.WorldPos;
-
-    for(int i = 0; i < POINT_LIGHTS; ++i)
-    {
-        vs_out.TangentLightPositions[i] = TBN * lightPositions[i];
-    }
 }

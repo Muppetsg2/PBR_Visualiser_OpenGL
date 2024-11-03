@@ -2,8 +2,6 @@
 
 #define M_PI 3.1415926535897932384626433832795
 
-#define POINT_LIGHTS 1
-
 const float MAX_REFLECTION_LOD = 4.0;
 
 in VS_OUT {
@@ -11,7 +9,6 @@ in VS_OUT {
     vec3 WorldPos;
     vec3 TangentViewPos;
     vec3 TangentWorldPos;
-    vec3 TangentLightPositions[POINT_LIGHTS];
     mat3 TBN;
 } fs_in;
 
@@ -31,9 +28,6 @@ uniform sampler2D aoMap;
 uniform float height_scale;
 
 uniform vec3 camPos;
-
-uniform vec3 lightPositions[POINT_LIGHTS];
-uniform vec3 lightColors[POINT_LIGHTS];
 
 vec3 GetNormalFromNormalMap(sampler2D map, vec2 coords)
 {
@@ -136,23 +130,11 @@ void main()
 
     vec2 texCoords = ParallaxMapping(fs_in.TexCoords, viewDir);
 
-    /*
-    if (texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
-        discard;
-    vec3 albedo = texture(albedoMap, fs_in.TexCoords).rgb;
-    vec3 normal = GetNormalFromNormalMap(normalMap, fs_in.TexCoords);
-    float metallic = texture(metallicMap, fs_in.TexCoords).r;
-    float roughness = texture(roughnessMap, fs_in.TexCoords).r;
-    float ao = texture(aoMap, fs_in.TexCoords).r;
-    */
-
     vec3 albedo = texture(albedoMap, texCoords).rgb;
     vec3 normal = GetNormalFromNormalMap(normalMap, texCoords);
     float metallic = texture(metallicMap, texCoords).r;
     float roughness = texture(roughnessMap, texCoords).r;
     float ao = texture(aoMap, texCoords).r;
-    /*
-    */
 
     vec3 N = normalize(normal);
     vec3 V = normalize(camPos - fs_in.WorldPos);
@@ -160,35 +142,6 @@ void main()
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
-
-    vec3 Lo = vec3(0.0);
-    for(int i = 0; i < POINT_LIGHTS; ++i)
-    {
-        vec3 L = normalize(lightPositions[i] - fs_in.WorldPos);
-        //vec3 L = normalize(fs_in.TangentLightPositions[i] - fs_in.TangentWorldPos);
-        vec3 H = normalize(V + L);
-
-        float dist = length(lightPositions[i] - fs_in.WorldPos);
-        //float dist = length(fs_in.TangentLightPositions[i] - fs_in.TangentWorldPos);
-        float attenuation = 1.0 / (dist * dist);
-        vec3 radiance = lightColors[i] * attenuation;
-
-        // cook-torrance brdf
-        float NDF = DistributionGGX(N, H, roughness);
-        float G = GeometrySmith(N, V, L, roughness);
-        vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-        
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;
-
-        vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-        vec3 specular = numerator / max(denominator, 0.001); 
-
-        float NdotL = max(dot(N, L), 0.0);        
-        Lo += (kD * albedo / M_PI + specular) * radiance * NdotL;
-    }
 
     vec3 F = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
@@ -205,7 +158,7 @@ void main()
 
     vec3 ambient = (kD * diffuse + specular) * ao;
 
-    vec3 color = ambient + Lo;
+    vec3 color = ambient;
 
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2)); 
