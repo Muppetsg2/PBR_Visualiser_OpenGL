@@ -4,12 +4,6 @@
 
 layout (location = 0) in vec3 position;
 
-layout (std140, binding = 0) uniform Matrices
-{
-    mat4 projection;
-    mat4 view;
-};
-
 out VS_OUT {
     vec2 TexCoords;
     vec3 WorldPos;
