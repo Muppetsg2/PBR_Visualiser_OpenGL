@@ -14,7 +14,10 @@ extern "C" {
 #include <Shader.h>
 #include <Skybox.h>
 #include <Camera.h>
+
+#if _DEBUG
 #include <Shape.h>
+#endif
 
 #if _DEBUG
 static void glfw_error_callback(int error, const char* description)
@@ -61,6 +64,7 @@ static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 bool init();
 void render();
 GLuint LoadDefaultWhiteTexture();
+GLuint LoadDefaultBlackTexture();
 
 #if _DEBUG
 void end_frame();
@@ -91,11 +95,28 @@ constexpr int32_t GL_VERSION_MINOR = 5;
 Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 std::string imageName[6] = { "Albedo", "Normal", "Metallic", "Displacement", "Roughness", "AO" };
 GLuint defaultWhiteTexture = 0;
+GLuint defaultBlackTexture = 0;
 
 GLuint quadVAO = 0;
 Shader* PBR = nullptr;
 glm::mat4 trans = glm::mat4(1.f);
 float height_scale = 0.04f;
+
+#if !_DEBUG
+std::string fileName = "";
+
+glm::vec3 quadVerts[4] = {
+    { 0.f, -.5f, -.5f },
+    {  0.f, -.5f, .5f  },
+    { 0.f, .5f,  -.5f  },
+    {  0.f, .5f,  .5f  }
+};
+
+unsigned int quadIndi[6] = {
+    2, 1, 0,
+    2, 3, 1
+};
+#endif
 
 #if _DEBUG
 bool openFileDialogs[6] = { false, false, false, false, false, false };
@@ -126,18 +147,87 @@ int main(int argc, char** argv)
     spdlog::info("Initialized project.");
 
 #if !_DEBUG
-    for (int i = 1; i < argc; ++i) {
-        TextureFileFormat inter = i == 1 ? TextureFileFormat::SRGB : i == 2 ? TextureFileFormat::RGB : TextureFileFormat::RED;
-        TextureFormat form = i == 1 ? TextureFormat::RGB : i == 2 ? TextureFormat::RGB : TextureFormat::RED;
-        imageTextures[i - 1] = new Texture2D(std::filesystem::absolute(std::filesystem::path(argv[i])).string().c_str(), inter, form);
-        spdlog::info("Image: '{}' with path '{}' loaded!", imageName[i - 1], std::filesystem::absolute(std::filesystem::path(argv[i])).string().c_str());
+
+    int img_count = 0;
+
+    if (argc > 2) {
+        bool imgs = false;
+        bool name = false;
+
+        for (int i = 1; i < argc; ++i) {
+            std::string a = std::string(argv[i]);
+            if (imgs && imageTextures[0] == nullptr) {
+                name = a == "-n";
+                if (name) {
+                    imgs = false;
+                    if (img_count == 0) spdlog::warn("The files list prefix was used, but no file was specified!");
+                    int imagesSize = 6 - img_count;
+
+                    if (imagesSize != 0) {
+                        for (int z = img_count; z < img_count + imagesSize; ++z) {
+                            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (a == "-f") {
+                    spdlog::warn("Prefix cannot be a file path!");
+                    continue;
+                }
+
+                if (img_count == 6) {
+                    imgs = false;
+                    continue;
+                }
+
+                TextureFileFormat inter = img_count == 0 ? TextureFileFormat::SRGB : img_count == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+                TextureFormat form = img_count == 0 ? TextureFormat::RGB : img_count == 1 ? TextureFormat::RGB : TextureFormat::RED;
+                imageTextures[img_count] = new Texture2D(std::filesystem::absolute(std::filesystem::path(a)).string().c_str(), inter, form);
+                spdlog::info("Image: '{}' with path '{}' loaded!", imageName[img_count], std::filesystem::absolute(std::filesystem::path(a)).string().c_str());
+                ++img_count;
+            }
+            else if (imgs && imageTextures[0] != nullptr) spdlog::warn("The files list prefix has been re-entered!");
+            else if (name && fileName == "") {
+                imgs = a == "-f";
+                if (imgs) {
+                    name = false;
+                    if (fileName == "") spdlog::warn("The file name prefix was used, but no name was specified!");
+                    continue;
+                }
+
+                if (a == "-n") {
+                    spdlog::warn("Prefix cannot be a file name!");
+                    continue;
+                }
+
+                if (fileName != "") {
+                    name = false;
+                    continue;
+                }
+
+                fileName = std::string(a).append(".png");
+            }
+            else if (name && fileName != "") spdlog::warn("The file name prefix has been re-entered!");
+            else {
+                imgs = a == "-f";
+                name = a == "-n";
+            }
+        }
+    }
+    else {
+        spdlog::warn(argc == 2 ? "Too few arguments to the program call were passed!" : "No argument to the program call was passed!");
+
+        for (int i = 0; i < 6; ++i) {
+            imageTextures[i] = new Texture2D(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture);
+        }
     }
 
-    int imagesSize = 6 - (argc - 1);
-
+    int imagesSize = 6 - img_count;
     if (imagesSize != 0) {
-        for (int i = argc; i < argc + imagesSize; ++i) {
-            imageTextures[i - 1] = new Texture2D(defaultWhiteTexture);
+        for (int z = img_count; z < img_count + imagesSize; ++z) {
+            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
         }
     }
 #endif
@@ -150,30 +240,6 @@ int main(int argc, char** argv)
 #else
     Camera::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT));
 #endif
-    
-
-    /*
-    const GLchar* faces[6] = {
-        "./res/skybox/Tutorial/right.jpg",
-        "./res/skybox/Tutorial/left.jpg",
-        "./res/skybox/Tutorial/top.jpg",
-        "./res/skybox/Tutorial/bottom.jpg",
-        "./res/skybox/Tutorial/front.jpg",
-        "./res/skybox/Tutorial/back.jpg"
-    };
-    */
-    /*
-    const GLchar* faces[6] = {
-        "./res/skybox/Park/posx.jpg",
-        "./res/skybox/Park/negx.jpg",
-        "./res/skybox/Park/posy.jpg",
-        "./res/skybox/Park/negy.jpg",
-        "./res/skybox/Park/posz.jpg",
-        "./res/skybox/Park/negz.jpg"
-    };
-
-    Skybox::Init(window, faces);
-    */
 
 #if _DEBUG
     Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
@@ -184,41 +250,55 @@ int main(int argc, char** argv)
     glGenVertexArrays(1, &quadVAO);
     glBindVertexArray(quadVAO);
 
-    glm::vec3 verts[4] = {
-        { 0.f, -.5f, -.5f },
-        {  0.f, -.5f, .5f  }, 
-        { 0.f, .5f,  -.5f  }, 
-        {  0.f, .5f,  .5f  }
-    };
+#if _DEBUG
+    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
 
-    unsigned int indi[6] = {
-        2, 1, 0,
-        2, 3, 1
-    };
-
+    // Vertices positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+    glEnableVertexAttribArray(4);
+#else
     GLuint quadVBO, quadEBO;
 
     glGenBuffers(1, &quadVBO);
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), verts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), quadVerts, GL_STATIC_DRAW);
 
     glGenBuffers(1, &quadEBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indi, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), quadIndi, GL_STATIC_DRAW);
 
     // Vertices positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
+#endif
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+#if _DEBUG
+    PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
+#else
     PBR = new Shader("./res/shader/basic2.vert", "./res/shader/basic2.frag");
+#endif
 
     Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+
+#if _DEBUG
+    trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
+#else
     trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
+#endif
 
 #if _DEBUG
     // Main loop
@@ -281,13 +361,14 @@ int main(int argc, char** argv)
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
     stbi_flip_vertically_on_write(true);
-    int result = stbi_write_png(std::filesystem::path(".\\PBR_Image.png").string().c_str(), width, height, 3, data, 0);
+    std::string name = fileName != "" ? fileName : "PBR_Image.png";
+    int result = stbi_write_png(std::filesystem::path(std::string(".\\").append(name)).string().c_str(), width, height, 3, data, 0);
 
     if (result != 0) {
-        spdlog::info("File 'PBR_Image.png' saved in directory '{}'", std::filesystem::current_path().string());
+        spdlog::info("File '{}' saved in directory '{}'", name, std::filesystem::current_path().string());
     }
     else {
-        spdlog::error("There was an error while trying to save 'PBR_Image.png' in directory '{}'", std::filesystem::current_path().string());
+        spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, std::filesystem::current_path().string());
     }
 
     delete[] data;
@@ -297,6 +378,15 @@ int main(int argc, char** argv)
     glDeleteTextures(1, &resTex);
     glDeleteRenderbuffers(1, &RBO);
     glDeleteFramebuffers(1, &FBO);
+#endif
+
+    glDeleteVertexArrays(1, &quadVAO);
+
+#if _DEBUG
+    Shape::Deinit();
+#else
+    glDeleteBuffers(1, &quadVBO);
+    glDeleteBuffers(1, &quadEBO);
 #endif
 
     delete PBR;
@@ -310,6 +400,7 @@ int main(int argc, char** argv)
     }
 
     glDeleteTextures(1, &defaultWhiteTexture);
+    glDeleteTextures(1, &defaultBlackTexture);
 
 #if _DEBUG
     // Cleanup
@@ -393,6 +484,7 @@ bool init()
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     defaultWhiteTexture = LoadDefaultWhiteTexture();
+    defaultBlackTexture = LoadDefaultBlackTexture();
 
     return true;
 }
@@ -412,7 +504,8 @@ void render()
             imageTextures[i]->Use(i);
         else {
             glActiveTexture(GL_TEXTURE0 + i);
-            glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
+            if (i >= 2 && i <= 4) glBindTexture(GL_TEXTURE_2D, defaultBlackTexture);
+            else glBindTexture(GL_TEXTURE_2D, defaultWhiteTexture);
         }
 
         std::string name = imageName[i];
@@ -436,7 +529,11 @@ void render()
     PBR->SetInt("brdfLUT", 8);
 
     glBindVertexArray(quadVAO);
-    glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+#if !_DEBUG
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)quadIndi);
+#else
+    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+#endif
     glBindVertexArray(0);
 
     glDepthFunc(GL_LESS);
@@ -448,13 +545,29 @@ void render()
 
 GLuint LoadDefaultWhiteTexture()
 {
-    unsigned char whitePixel[3] = { 255, 255, 255 }; // czarna tekstura RGB
+    unsigned char whitePixel[3] = { 255, 255, 255 };
 
     GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return textureID;
+}
+
+GLuint LoadDefaultBlackTexture()
+{
+    unsigned char blackPixel[3] = { 0, 0, 0 };
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, blackPixel);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -656,7 +769,7 @@ void imgui_render()
         }
         else 
         {
-            ImGui::Image((void*)(intptr_t)defaultWhiteTexture, ImVec2(128, 128));
+            ImGui::Image((void*)(intptr_t)(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture), ImVec2(128, 128));
         }
     }
 

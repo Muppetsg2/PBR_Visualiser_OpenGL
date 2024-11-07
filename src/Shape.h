@@ -210,6 +210,25 @@ public:
 		return _sphereIndices;
 	}
 #endif
+
+	static void Deinit() {
+		if (Shape::_cubeInitialized) {
+			glDeleteBuffers(1, &Shape::_cubeVBO);
+			glDeleteBuffers(1, &Shape::_cubeEBO);
+		}
+
+		if (Shape::_quadInitialized) {
+			glDeleteBuffers(1, &Shape::_quadVBO);
+			glDeleteBuffers(1, &Shape::_quadEBO);
+		}
+
+#if _DEBUG
+		if (_sphereInitialized) {
+			glDeleteBuffers(1, &Shape::_sphereVBO);
+			glDeleteBuffers(1, &Shape::_sphereEBO);
+		}
+#endif
+	}
 };
 
 #ifdef SHAPE_IMPLEMENTATION
