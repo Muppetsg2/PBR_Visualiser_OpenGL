@@ -66,7 +66,11 @@ void render();
 GLuint LoadDefaultWhiteTexture();
 GLuint LoadDefaultBlackTexture();
 
-#if _DEBUG
+#if !_DEBUG
+void processFileArgument(const std::string& arg, std::vector<std::string>& imgPaths);
+void processNameArgument(const std::string& arg, std::string& fileName);
+void processDirectoryArgument(const std::string& arg, std::string& direc);
+#else
 void end_frame();
 void input();
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -103,8 +107,6 @@ glm::mat4 trans = glm::mat4(1.f);
 float height_scale = 0.04f;
 
 #if !_DEBUG
-std::string fileName = "";
-
 glm::vec3 quadVerts[4] = {
     { 0.f, -.5f, -.5f },
     {  0.f, -.5f, .5f  },
@@ -134,9 +136,63 @@ float rotateAngle = 50.f;
 int main(int argc, char** argv)
 {
 #if _DEBUG
-    SPDLOG_INFO("Configuration: DEBUG");
+    spdlog::info("Configuration: DEBUG");
 #else
-    SPDLOG_INFO("Configuration: RELEASE");
+    spdlog::info("Configuration: RELEASE");
+
+    std::string fileName;
+    std::string saveDir;
+    std::vector<std::string> imgPaths;
+
+    if (argc > 1) {
+        bool expectFile = false;
+        bool expectName = false;
+        bool expectDirectory = false;
+
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+
+            if (expectFile) {
+                processFileArgument(arg, imgPaths);
+                expectFile = false;
+            }
+            else if (expectName) {
+                processNameArgument(arg, fileName);
+                expectName = false;
+            }
+            else if (expectDirectory) {
+                processDirectoryArgument(arg, saveDir);
+                expectDirectory = false;
+            }
+            else if (arg == "-f") {
+                expectFile = true;
+            }
+            else if (arg == "-n") {
+                expectName = true;
+            }
+            else if (arg == "-d") {
+                expectDirectory = true;
+            }
+            else {
+                spdlog::warn("Unknown argument: {}", arg);
+            }
+        }
+
+        // Warnings if any expected argument is missing
+        if (expectFile) {
+            spdlog::warn("The '-f' prefix was used, but no file path was specified!");
+        }
+        if (expectName) {
+            spdlog::warn("The '-n' prefix was used, but no name was specified!");
+        }
+        if (expectDirectory) {
+            spdlog::warn("The '-d' prefix was used, but no directory path was specified!");
+        }
+
+    }
+    else {
+        spdlog::info("No arguments were passed to the program.");
+    }
 #endif
 
     if (!init())
@@ -145,92 +201,6 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     spdlog::info("Initialized project.");
-
-#if !_DEBUG
-
-    int img_count = 0;
-
-    if (argc > 2) {
-        bool imgs = false;
-        bool name = false;
-
-        for (int i = 1; i < argc; ++i) {
-            std::string a = std::string(argv[i]);
-            if (imgs && imageTextures[0] == nullptr) {
-                name = a == "-n";
-                if (name) {
-                    imgs = false;
-                    if (img_count == 0) spdlog::warn("The files list prefix was used, but no file was specified!");
-                    int imagesSize = 6 - img_count;
-
-                    if (imagesSize != 0) {
-                        for (int z = img_count; z < img_count + imagesSize; ++z) {
-                            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
-                        }
-                    }
-
-                    continue;
-                }
-
-                if (a == "-f") {
-                    spdlog::warn("Prefix cannot be a file path!");
-                    continue;
-                }
-
-                if (img_count == 6) {
-                    imgs = false;
-                    continue;
-                }
-
-                TextureFileFormat inter = img_count == 0 ? TextureFileFormat::SRGB : img_count == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
-                TextureFormat form = img_count == 0 ? TextureFormat::RGB : img_count == 1 ? TextureFormat::RGB : TextureFormat::RED;
-                imageTextures[img_count] = new Texture2D(std::filesystem::absolute(std::filesystem::path(a)).string().c_str(), inter, form);
-                spdlog::info("Image: '{}' with path '{}' loaded!", imageName[img_count], std::filesystem::absolute(std::filesystem::path(a)).string().c_str());
-                ++img_count;
-            }
-            else if (imgs && imageTextures[0] != nullptr) spdlog::warn("The files list prefix has been re-entered!");
-            else if (name && fileName == "") {
-                imgs = a == "-f";
-                if (imgs) {
-                    name = false;
-                    if (fileName == "") spdlog::warn("The file name prefix was used, but no name was specified!");
-                    continue;
-                }
-
-                if (a == "-n") {
-                    spdlog::warn("Prefix cannot be a file name!");
-                    continue;
-                }
-
-                if (fileName != "") {
-                    name = false;
-                    continue;
-                }
-
-                fileName = std::string(a).append(".png");
-            }
-            else if (name && fileName != "") spdlog::warn("The file name prefix has been re-entered!");
-            else {
-                imgs = a == "-f";
-                name = a == "-n";
-            }
-        }
-    }
-    else {
-        spdlog::warn(argc == 2 ? "Too few arguments to the program call were passed!" : "No argument to the program call was passed!");
-
-        for (int i = 0; i < 6; ++i) {
-            imageTextures[i] = new Texture2D(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture);
-        }
-    }
-
-    int imagesSize = 6 - img_count;
-    if (imagesSize != 0) {
-        for (int z = img_count; z < img_count + imagesSize; ++z) {
-            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
-        }
-    }
-#endif
 
 #if _DEBUG
     init_imgui();
@@ -245,6 +215,18 @@ int main(int argc, char** argv)
     Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
 #else
     Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), "./res/skybox/rooitou_park_4k.hdr");
+
+    for (size_t i = 0; i < imgPaths.size(); ++i) {
+        TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+        TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
+        imageTextures[i] = new Texture2D(imgPaths[i].c_str(), inter, form);
+    }
+
+    if (6 - imgPaths.size() > 0) {
+        for (size_t z = imgPaths.size(); z < 6; ++z) {
+            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
+        }
+    }
 #endif
 
     glGenVertexArrays(1, &quadVAO);
@@ -361,14 +343,15 @@ int main(int argc, char** argv)
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
     stbi_flip_vertically_on_write(true);
-    std::string name = fileName != "" ? fileName : "PBR_Image.png";
-    int result = stbi_write_png(std::filesystem::path(std::string(".\\").append(name)).string().c_str(), width, height, 3, data, 0);
+    std::string name = !fileName.empty() ? fileName : "PBR_Image.png";
+    std::string savePath = !saveDir.empty() ? saveDir : std::filesystem::current_path().string();
+    int result = stbi_write_png(std::filesystem::path(std::string(savePath).append("\\").append(name)).string().c_str(), width, height, 3, data, 0);
 
     if (result != 0) {
-        spdlog::info("File '{}' saved in directory '{}'", name, std::filesystem::current_path().string());
+        spdlog::info("File '{}' saved in directory '{}'", name, savePath);
     }
     else {
-        spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, std::filesystem::current_path().string());
+        spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, savePath);
     }
 
     delete[] data;
@@ -575,7 +558,43 @@ GLuint LoadDefaultBlackTexture()
     return textureID;
 }
 
-#if _DEBUG
+#if !_DEBUG
+void processFileArgument(const std::string& arg, std::vector<std::string>& imgPaths) {
+    if (imgPaths.size() >= 6) {
+        spdlog::warn("Too many image paths specified! Ignoring additional paths.");
+        return;
+    }
+
+    if (!imgPaths.empty()) {
+        spdlog::warn("Image paths have been specified in advance! Ignoring additional paths.");
+        return;
+    }
+    imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
+}
+
+void processNameArgument(const std::string& arg, std::string& fileName) {
+    if (!fileName.empty()) {
+        spdlog::warn("File name has already been specified! Ignoring additional name.");
+        return;
+    }
+    fileName = arg + ".png";
+}
+
+void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
+    try {
+        std::filesystem::path dirPath = std::filesystem::absolute(arg);
+        if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+            saveDir = dirPath.string();
+        }
+        else {
+            spdlog::warn("Provided path after '-d' is invalid or is not a directory!");
+        }
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+        spdlog::warn("Error processing directory path after '-d': {}", e.what());
+    }
+}
+#else
 void end_frame()
 {
     TimeManager::Update();
