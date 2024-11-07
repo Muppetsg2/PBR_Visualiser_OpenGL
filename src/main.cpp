@@ -67,9 +67,13 @@ GLuint LoadDefaultWhiteTexture();
 GLuint LoadDefaultBlackTexture();
 
 #if !_DEBUG
-void processFileArgument(const std::string& arg, std::vector<std::string>& imgPaths);
+ENUM_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
+
+void printHelp();
+void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
 void processNameArgument(const std::string& arg, std::string& fileName);
 void processDirectoryArgument(const std::string& arg, std::string& direc);
+void processPositionArgument(const std::string& arg, RenderPosition& position);
 #else
 void end_frame();
 void input();
@@ -143,18 +147,25 @@ int main(int argc, char** argv)
     std::string fileName;
     std::string saveDir;
     std::vector<std::string> imgPaths;
+    RenderPosition position = RenderPosition::DEFAULT;
 
     if (argc > 1) {
-        bool expectFile = false;
         bool expectName = false;
         bool expectDirectory = false;
+        bool expectPosition = false;
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
 
-            if (expectFile) {
-                processFileArgument(arg, imgPaths);
-                expectFile = false;
+            if (arg == "-h") {
+                printHelp();
+                imgPaths.clear();
+                return 0;
+            }
+
+            if (arg == "-f") {
+                ++i;
+                processFileArguments(i, argc, argv, imgPaths);
             }
             else if (expectName) {
                 processNameArgument(arg, fileName);
@@ -164,8 +175,9 @@ int main(int argc, char** argv)
                 processDirectoryArgument(arg, saveDir);
                 expectDirectory = false;
             }
-            else if (arg == "-f") {
-                expectFile = true;
+            else if (expectPosition) {
+                processPositionArgument(arg, position);
+                expectPosition = false;
             }
             else if (arg == "-n") {
                 expectName = true;
@@ -173,20 +185,23 @@ int main(int argc, char** argv)
             else if (arg == "-d") {
                 expectDirectory = true;
             }
+            else if (arg == "-p") {
+                expectPosition = true;
+            }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
             }
         }
 
         // Warnings if any expected argument is missing
-        if (expectFile) {
-            spdlog::warn("The '-f' prefix was used, but no file path was specified!");
-        }
         if (expectName) {
             spdlog::warn("The '-n' prefix was used, but no name was specified!");
         }
         if (expectDirectory) {
             spdlog::warn("The '-d' prefix was used, but no directory path was specified!");
+        }
+        if (expectPosition) {
+            spdlog::warn("The '-p' prefix was used, but no position was specified!");
         }
 
     }
@@ -227,6 +242,8 @@ int main(int argc, char** argv)
             imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
         }
     }
+
+    imgPaths.clear();
 #endif
 
     glGenVertexArrays(1, &quadVAO);
@@ -273,13 +290,54 @@ int main(int argc, char** argv)
     PBR = new Shader("./res/shader/basic2.vert", "./res/shader/basic2.frag");
 #endif
 
-    Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
-    Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
-
 #if _DEBUG
+    Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+    Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
 #else
-    trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
+    switch (position) {
+        case RenderPosition::TOP: {
+            Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
+            Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
+            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case RenderPosition::BOTTOM: {
+            Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
+            Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case RenderPosition::FRONT: {
+            Camera::SetPosition(glm::vec3(0.05f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(1.2f, 0.f, 0.f));
+            trans = glm::rotate(trans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
+        case RenderPosition::DEFAULT:
+        case RenderPosition::BACK: {
+            Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+            Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
+            break;
+        }
+        case RenderPosition::RIGHT: {
+            Camera::SetPosition(glm::vec3(0.f, 0.f, 0.05f));
+            Camera::SetRotation(glm::vec3(0.f, 90.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 0.f, 1.2f));
+            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
+        case RenderPosition::LEFT: {
+            Camera::SetPosition(glm::vec3(0.f, 0.f, -0.05f));
+            Camera::SetRotation(glm::vec3(0.f, -90.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 0.f, -1.2f));
+            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
+    }
 #endif
 
 #if _DEBUG
@@ -559,17 +617,47 @@ GLuint LoadDefaultBlackTexture()
 }
 
 #if !_DEBUG
-void processFileArgument(const std::string& arg, std::vector<std::string>& imgPaths) {
-    if (imgPaths.size() >= 6) {
+void printHelp() {
+    spdlog::info("Usage:");
+    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>]");
+    spdlog::info("Options:");
+    spdlog::info("  -h                Display this help message and exit.");
+    spdlog::info("  -f <image_path>   Specify up to 6 image paths to process. Additional paths will be ignored.");
+    spdlog::info("                    Example: program -f image1.jpg image2.png image3.png");
+    spdlog::info("  -n <output_name>  Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
+    spdlog::info("  -d <directory_path> Specify the directory where files will be saved. Default is the current executable path.");
+    spdlog::info("  -p <position>     Specify the position of the plane in world. Accepted values: top, bottom, front, back, left, right.");
+    spdlog::info("                    Default position is 'back'.");
+}
+
+void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths) {
+    if (i >= argc) {
+        spdlog::warn("The '-f' prefix was used, but no file path was specified!");
+        return;
+    }
+
+    while (i < argc && imgPaths.size() < 6) {
+        std::string arg = argv[i];
+
+        // Check if the next argument is a new flag (starts with '-')
+        if (arg[0] == '-') {
+            --i;  // Step back to re-process this as the next option
+            break;
+        }
+
+        imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
+        ++i;
+    }
+
+    if (imgPaths.size() == 6 && i < argc && argv[i][0] != '-') {
         spdlog::warn("Too many image paths specified! Ignoring additional paths.");
         return;
     }
 
-    if (!imgPaths.empty()) {
-        spdlog::warn("Image paths have been specified in advance! Ignoring additional paths.");
+    if (std::string(argv[i])[0] == '-') {
+        --i;
         return;
     }
-    imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
 }
 
 void processNameArgument(const std::string& arg, std::string& fileName) {
@@ -592,6 +680,32 @@ void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
     }
     catch (const std::filesystem::filesystem_error& e) {
         spdlog::warn("Error processing directory path after '-d': {}", e.what());
+    }
+}
+
+void processPositionArgument(const std::string& arg, RenderPosition& position) {
+    static const std::vector<std::string> validPositions = { "top", "bottom", "front", "back", "left", "right" };
+
+    if (position != RenderPosition::DEFAULT) {
+        spdlog::warn("Position has already been specified! Ignoring additional position.");
+        return;
+    }
+
+    std::string pos = arg;
+
+    std::transform(pos.begin(), pos.end(), pos.begin(), [](unsigned char c)
+    {
+        return std::tolower(c);
+    });
+
+    auto item = std::find(validPositions.begin(), validPositions.end(), pos);
+    if (item != validPositions.end()) {
+        position = (RenderPosition)(uint8_t)(item - validPositions.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, left, right.", arg);
+        return;
     }
 }
 #else
