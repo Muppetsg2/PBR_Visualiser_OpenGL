@@ -618,6 +618,8 @@ GLuint LoadDefaultBlackTexture()
 
 #if !_DEBUG
 void printHelp() {
+    spdlog::set_pattern("%v");
+
     spdlog::info("Usage:");
     spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>]");
     spdlog::info("Options:");
@@ -654,7 +656,7 @@ void processFileArguments(int& i, int argc, char** argv, std::vector<std::string
         return;
     }
 
-    if (std::string(argv[i])[0] == '-') {
+    if (i < argc && std::string(argv[i])[0] == '-') {
         --i;
         return;
     }
