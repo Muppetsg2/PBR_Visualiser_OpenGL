@@ -67,13 +67,16 @@ GLuint LoadDefaultWhiteTexture();
 GLuint LoadDefaultBlackTexture();
 
 #if !_DEBUG
-ENUM_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
+ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
+
+ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
 
 void printHelp();
 void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
 void processNameArgument(const std::string& arg, std::string& fileName);
 void processDirectoryArgument(const std::string& arg, std::string& direc);
 void processPositionArgument(const std::string& arg, RenderPosition& position);
+void processResolutionArgument(const std::string& arg, RenderResolution& resolution);
 #else
 void end_frame();
 void input();
@@ -89,8 +92,8 @@ constexpr const char* WINDOW_NAME = "PBR_Visualiser";
 constexpr int32_t WINDOW_WIDTH = 1920;
 constexpr int32_t WINDOW_HEIGHT = 1080;
 #else
-constexpr int32_t WINDOW_WIDTH = 2048;
-constexpr int32_t WINDOW_HEIGHT = 2048;
+int32_t WINDOW_WIDTH = 2048;
+int32_t WINDOW_HEIGHT = 2048;
 #endif
 
 GLFWwindow* window = nullptr;
@@ -148,11 +151,13 @@ int main(int argc, char** argv)
     std::string saveDir;
     std::vector<std::string> imgPaths;
     RenderPosition position = RenderPosition::DEFAULT;
+    RenderResolution resolution = RenderResolution::DEFAULT;
 
     if (argc > 1) {
         bool expectName = false;
         bool expectDirectory = false;
         bool expectPosition = false;
+        bool expectResolution = false;
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -179,6 +184,10 @@ int main(int argc, char** argv)
                 processPositionArgument(arg, position);
                 expectPosition = false;
             }
+            else if (expectResolution) {
+                processResolutionArgument(arg, resolution);
+                expectResolution = false;
+            }
             else if (arg == "-n") {
                 expectName = true;
             }
@@ -187,6 +196,9 @@ int main(int argc, char** argv)
             }
             else if (arg == "-p") {
                 expectPosition = true;
+            }
+            else if (arg == "-r") {
+                expectResolution = true;
             }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
@@ -203,12 +215,54 @@ int main(int argc, char** argv)
         if (expectPosition) {
             spdlog::warn("The '-p' prefix was used, but no position was specified!");
         }
+        if (expectResolution) {
+            spdlog::warn("The '-r' prefix was used, but no resolution was specified!");
+        }
 
     }
     else {
         spdlog::info("No arguments were passed to the program.");
     }
+
+    switch (resolution) {
+        case RenderResolution::R128: {
+            WINDOW_WIDTH = 128;
+            WINDOW_HEIGHT = 128;
+            break;
+        }
+        case RenderResolution::R256: {
+            WINDOW_WIDTH = 256;
+            WINDOW_HEIGHT = 256;
+            break;
+        }
+        case RenderResolution::R512: {
+            WINDOW_WIDTH = 512;
+            WINDOW_HEIGHT = 512;
+            break;
+        }
+        case RenderResolution::R1K: {
+            WINDOW_WIDTH = 1024;
+            WINDOW_HEIGHT = 1024;
+            break;
+        }
+        case RenderResolution::R2K: {
+            WINDOW_WIDTH = 2048;
+            WINDOW_HEIGHT = 2048;
+            break;
+        }
+        case RenderResolution::R4K: {
+            WINDOW_WIDTH = 4096;
+            WINDOW_HEIGHT = 4096;
+            break;
+        }
+        case RenderResolution::DEFAULT: {
+            WINDOW_WIDTH = 2048;
+            WINDOW_HEIGHT = 2048;
+            break;
+        }
+    }
 #endif
+    spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
 
     if (!init())
     {
@@ -621,15 +675,18 @@ void printHelp() {
     spdlog::set_pattern("%v");
 
     spdlog::info("Usage:");
-    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>]");
+    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-r <resolution>]");
     spdlog::info("Options:");
-    spdlog::info("  -h                Display this help message and exit.");
-    spdlog::info("  -f <image_path>   Specify up to 6 image paths to process. Additional paths will be ignored.");
-    spdlog::info("                    Example: program -f image1.jpg image2.png image3.png");
-    spdlog::info("  -n <output_name>  Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
+    spdlog::info("  -h                  Display this help message and exit.");
+    spdlog::info("  -f <image_path>     Specify up to 6 image paths to process. Additional paths will be ignored.");
+    spdlog::info("                      Example: program -f image1.jpg image2.png image3.png");
+    spdlog::info("  -n <output_name>    Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
     spdlog::info("  -d <directory_path> Specify the directory where files will be saved. Default is the current executable path.");
-    spdlog::info("  -p <position>     Specify the position of the plane in world. Accepted values: top, bottom, front, back, left, right.");
-    spdlog::info("                    Default position is 'back'.");
+    spdlog::info("  -p <position>       Specify the position of the plane in world. Accepted values: top, bottom, front, back, left, right.");
+    spdlog::info("                      Default position is 'back'.");
+    spdlog::info("  -r <resolution>     Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
+    spdlog::info("                      Default resolution is 'r2k'.");
+    spdlog::info("                      The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
 }
 
 void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths) {
@@ -707,6 +764,32 @@ void processPositionArgument(const std::string& arg, RenderPosition& position) {
     }
     else {
         spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, left, right.", arg);
+        return;
+    }
+}
+
+void processResolutionArgument(const std::string& arg, RenderResolution& resolution) {
+    static const std::vector<std::string> validResolutions = { "r128", "r256", "r512", "r1k", "r2k", "r4k" };
+
+    if (resolution != RenderResolution::DEFAULT) {
+        spdlog::warn("Resolution has already been specified! Ignoring additional resolution.");
+        return;
+    }
+
+    std::string res = arg;
+
+    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    auto item = std::find(validResolutions.begin(), validResolutions.end(), res);
+    if (item != validResolutions.end()) {
+        resolution = (RenderResolution)(uint8_t)(item - validResolutions.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid resolution argument: '{}'. Accepted values are: r128, r256, r512, r1k, r2k, r4k.", arg);
         return;
     }
 }
