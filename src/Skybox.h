@@ -24,7 +24,7 @@ private:
     Skybox() = default;
     virtual ~Skybox() = default;
 
-    static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer);
+    static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer, std::string shaderDir);
 
     static std::pair<bool, std::string> CheckFolder();
     static void SaveData(std::string dir);

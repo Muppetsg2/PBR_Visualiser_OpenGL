@@ -33,7 +33,7 @@ CPMAddPackage(
 )
 CPMAddPackage("gh:gabime/spdlog@1.14.1")
 
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     CPMAddPackage("gh:ocornut/imgui@1.91.3-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")

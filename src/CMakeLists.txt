@@ -10,7 +10,7 @@ file(GLOB_RECURSE HEADER_FILES
 	 *.h
 	 *.hpp)
 	 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/).*")
 	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/).*")
 endif()
@@ -48,7 +48,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 												  ${stb_image_SOURCE_DIR}
 												  ${stb_image_write_SOURCE_DIR})
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
 	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR})
 else()

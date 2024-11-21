@@ -17,9 +17,9 @@ const GLchar* Skybox::_paths[6] = { "", "", "", "", "", "" };
 GLFWwindow* Skybox::_window = nullptr;
 glm::ivec2 Skybox::_windowSize = glm::ivec2();
 
-bool Skybox::GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer)
+bool Skybox::GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer, std::string shaderDir)
 {
-	Shader* brdfShader = new Shader("./res/shader/brdf.vert", "./res/shader/brdf.frag");
+	Shader* brdfShader = new Shader((shaderDir + "/brdf.vert").c_str(), (shaderDir + "/brdf.frag").c_str());
 
 	if (!brdfShader->IsInitialized())
 	{
@@ -490,8 +490,10 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 		return;
 	}
 
+	std::string shaderPath = std::filesystem::absolute(std::string(faces[0])).parent_path().string() + "/../shader";
+
 	if (Skybox::_shader == nullptr) {
-		Skybox::_shader = new Shader("./res/shader/skybox.vert", "./res/shader/skybox.frag");
+		Skybox::_shader = new Shader(std::string(shaderPath + "/skybox.vert").c_str(), std::string(shaderPath + "/skybox.frag").c_str());
 	}
 
 	if (!Skybox::_shader->IsInitialized()) {
@@ -606,7 +608,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
-	Shader* irradianceShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/irradiance.frag");
+	Shader* irradianceShader = new Shader(std::string(shaderPath + "/equirectangular.vert").c_str(), std::string(shaderPath + "/irradiance.frag").c_str());
 
 	if (!irradianceShader->IsInitialized())
 	{
@@ -631,7 +633,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 
 	spdlog::info("Skybox irradiance shader initialized!");
 
-	Shader* prefilterShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/prefilter.frag");
+	Shader* prefilterShader = new Shader(std::string(shaderPath + "/equirectangular.vert").c_str(), std::string(shaderPath + "/prefilter.frag").c_str());
 
 	if (!prefilterShader->IsInitialized())
 	{
@@ -767,7 +769,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 
 	spdlog::info("Prefilter Texture generated!");
 
-	if (!GenerateBRDFLut(captureFBO, captureRBO))
+	if (!GenerateBRDFLut(captureFBO, captureRBO, shaderPath))
 	{
 		spdlog::error("BRDFLut Texture couldn't have been generated!");
 		delete prefilterShader;
@@ -851,8 +853,10 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
+	std::string shaderPath = std::filesystem::absolute(std::string(hdr)).parent_path().string() + "/../shader";
+
 	if (Skybox::_shader == nullptr) {
-		Skybox::_shader = new Shader("./res/shader/skybox.vert", "./res/shader/skybox.frag");
+		Skybox::_shader = new Shader(std::string(shaderPath + "/skybox.vert").c_str(), std::string(shaderPath + "/skybox.frag").c_str());
 	}
 
 	if (!Skybox::_shader->IsInitialized()) {
@@ -961,7 +965,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 	//int size = std::max(window_size.x, window_size.y);
 	int size = 2048;
 
-	Shader* equirectangularShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/equirectangular.frag");
+	Shader* equirectangularShader = new Shader(std::string(shaderPath + "/equirectangular.vert").c_str(), std::string(shaderPath + "/equirectangular.frag").c_str());
 
 	if (!equirectangularShader->IsInitialized())
 	{
@@ -990,7 +994,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 
 	spdlog::info("Skybox equirectangular shader initialized!");
 
-	Shader* irradianceShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/irradiance.frag");
+	Shader* irradianceShader = new Shader(std::string(shaderPath + "/equirectangular.vert").c_str(), std::string(shaderPath + "/irradiance.frag").c_str());
 
 	if (!irradianceShader->IsInitialized())
 	{
@@ -1022,7 +1026,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 
 	spdlog::info("Skybox irradiance shader initialized!");
 
-	Shader* prefilterShader = new Shader("./res/shader/equirectangular.vert", "./res/shader/prefilter.frag");
+	Shader* prefilterShader = new Shader(std::string(shaderPath + "/equirectangular.vert").c_str(), std::string(shaderPath + "/prefilter.frag").c_str());
 
 	if (!prefilterShader->IsInitialized())
 	{
@@ -1212,7 +1216,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 
 	spdlog::info("Prefilter Texture generated!");
 
-	if (!GenerateBRDFLut(captureFBO, captureRBO))
+	if (!GenerateBRDFLut(captureFBO, captureRBO, shaderPath))
 	{
 		spdlog::error("BRDFLut Texture couldn't have been generated!");
 		delete prefilterShader;

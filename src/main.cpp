@@ -94,6 +94,7 @@ constexpr int32_t WINDOW_HEIGHT = 1080;
 #else
 int32_t WINDOW_WIDTH = 2048;
 int32_t WINDOW_HEIGHT = 2048;
+std::string exeDirPath;
 #endif
 
 GLFWwindow* window = nullptr;
@@ -146,6 +147,8 @@ int main(int argc, char** argv)
     spdlog::info("Configuration: DEBUG");
 #else
     spdlog::info("Configuration: RELEASE");
+
+    exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
 
     std::string fileName;
     std::string saveDir;
@@ -283,7 +286,7 @@ int main(int argc, char** argv)
 #if _DEBUG
     Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
 #else
-    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), "./res/skybox/rooitou_park_4k.hdr");
+    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), std::string(exeDirPath + "/res/skybox/rooitou_park_4k.hdr").c_str());
 
     for (size_t i = 0; i < imgPaths.size(); ++i) {
         TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
@@ -341,7 +344,7 @@ int main(int argc, char** argv)
 #if _DEBUG
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
 #else
-    PBR = new Shader("./res/shader/basic2.vert", "./res/shader/basic2.frag");
+    PBR = new Shader(std::string(exeDirPath + "/res/shader/basic2.vert").c_str(), std::string(exeDirPath + "/res/shader/basic2.frag").c_str());
 #endif
 
 #if _DEBUG
