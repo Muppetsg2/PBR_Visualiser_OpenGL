@@ -31,10 +31,10 @@ CPMAddPackage(
   GIT_REPOSITORY https://github.com/g-truc/gli.git
   GIT_TAG master
 )
-CPMAddPackage("gh:gabime/spdlog@1.14.1")
+CPMAddPackage("gh:gabime/spdlog@1.15.0")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    CPMAddPackage("gh:ocornut/imgui@1.91.3-docking")
+    CPMAddPackage("gh:ocornut/imgui@1.91.5-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
     add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
