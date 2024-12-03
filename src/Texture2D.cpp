@@ -34,7 +34,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		float* image = stbi_loadf(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
 
 		if (image) {
-			this->_path = path;
+			this->_path = std::string(path);
 
 			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
 
@@ -53,7 +53,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		unsigned char* image = stbi_load(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
 
 		if (image) {
-			this->_path = path;
+			this->_path = std::string(path);
 
 			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
 
@@ -222,6 +222,11 @@ GLuint Texture2D::GetId() const
 
 glm::ivec2 Texture2D::GetSize() const {
 	return _size;
+}
+
+std::string Texture2D::GetPath() const
+{
+	return _path;
 }
 
 int Texture2D::GetWidth() const

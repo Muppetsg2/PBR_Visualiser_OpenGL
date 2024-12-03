@@ -16,7 +16,14 @@ private:
     static bool _init;
     static bool _hdr;
 
-    static const GLchar* _paths[6];
+#if _DEBUG
+    static bool _openImageDialogs[7];
+    static ImFileDialogInfo _imageDialogInfos[7];
+#endif
+
+    static std::string _paths[6];
+
+    static std::string _resDir;
 
     static GLFWwindow* _window;
     static glm::ivec2 _windowSize;
@@ -30,11 +37,15 @@ private:
     static void SaveData(std::string dir);
     static bool LoadSavedData(std::string dir);
 
+#if _DEBUG
+    static bool LoadSavedDataToChange(std::string dir, bool isDiffrent);
+#endif
+
 public:
-    static void Init(glm::ivec2 window_size, const GLchar* faces[6]);
-    static void Init(GLFWwindow* window, const GLchar* faces[6]);
-    static void Init(glm::ivec2 window_size, const GLchar* hdr);
-    static void Init(GLFWwindow* window, const GLchar* hdr);
+    static void Init(glm::ivec2 window_size, std::string exeDir, const GLchar* faces[6]);
+    static void Init(GLFWwindow* window, std::string exeDir, const GLchar* faces[6]);
+    static void Init(glm::ivec2 window_size, std::string exeDir, const GLchar* hdr);
+    static void Init(GLFWwindow* window, std::string exeDir, const GLchar* hdr);
     static void Draw();
     static void Deinit();
 
@@ -44,6 +55,9 @@ public:
     static void UseBrdfLUTTexture(unsigned int samplerId);
 
 #if _DEBUG
+    static void ChangeTexture(const GLchar* hdr);
+    static void ChangeTexture(std::string faces[6]);
     static void DrawEditor(bool* open);
+    static void DrawSkyboxFacesLoader(bool* open);
 #endif
 };

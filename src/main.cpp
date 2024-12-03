@@ -78,6 +78,12 @@ void processDirectoryArgument(const std::string& arg, std::string& direc);
 void processPositionArgument(const std::string& arg, RenderPosition& position);
 void processResolutionArgument(const std::string& arg, RenderResolution& resolution);
 #else
+
+ENUM_CLASS_BASE_VALUE(ShapeType, uint8_t, Sphere, 0, Cube, 1, Plane, 2)
+
+ShapeType shapeType = ShapeType::Sphere;
+
+void set_shape(GLuint VAO, ShapeType type);
 void end_frame();
 void input();
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -94,10 +100,10 @@ constexpr int32_t WINDOW_HEIGHT = 1080;
 #else
 int32_t WINDOW_WIDTH = 2048;
 int32_t WINDOW_HEIGHT = 2048;
-std::string exeDirPath;
 #endif
 
 GLFWwindow* window = nullptr;
+std::string exeDirPath;
 
 // Change these to lower GL version like 4.5 if GL 4.6 can't be initialized on your machine
 const     char*   glsl_version     = "#version 450";
@@ -143,12 +149,12 @@ float rotateAngle = 50.f;
 
 int main(int argc, char** argv)
 {
+    exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
+
 #if _DEBUG
     spdlog::info("Configuration: DEBUG");
 #else
     spdlog::info("Configuration: RELEASE");
-
-    exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
 
     std::string fileName;
     std::string saveDir;
@@ -284,9 +290,9 @@ int main(int argc, char** argv)
 #endif
 
 #if _DEBUG
-    Skybox::Init(window, "./res/skybox/rooitou_park_4k.hdr");
+    Skybox::Init(window, exeDirPath, "./res/skybox/rooitou_park_4k.hdr");
 #else
-    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), std::string(exeDirPath + "/res/skybox/rooitou_park_4k.hdr").c_str());
+    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), exeDirPath, std::string(exeDirPath + "/res/skybox/rooitou_park_4k.hdr").c_str());
 
     for (size_t i = 0; i < imgPaths.size(); ++i) {
         TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
@@ -304,24 +310,12 @@ int main(int argc, char** argv)
 #endif
 
     glGenVertexArrays(1, &quadVAO);
-    glBindVertexArray(quadVAO);
 
 #if _DEBUG
-    glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
-
-    // Vertices positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
-    glEnableVertexAttribArray(4);
+    set_shape(quadVAO, shapeType);
 #else
+    glBindVertexArray(quadVAO);
+
     GLuint quadVBO, quadEBO;
 
     glGenBuffers(1, &quadVBO);
@@ -335,11 +329,11 @@ int main(int argc, char** argv)
     // Vertices positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
-#endif
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+#endif
 
 #if _DEBUG
     PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
@@ -630,7 +624,23 @@ void render()
 #if !_DEBUG
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)quadIndi);
 #else
-    glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+    switch (shapeType) {
+        case ShapeType::Sphere: {
+            glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+            break;
+        }
+        case ShapeType::Cube: {
+            glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
+            break;
+        }
+        case ShapeType::Plane: {
+            glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
+            break;
+        }
+        default: {
+            glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
+        }
+    }
 #endif
     glBindVertexArray(0);
 
@@ -797,6 +807,51 @@ void processResolutionArgument(const std::string& arg, RenderResolution& resolut
     }
 }
 #else
+void set_shape(GLuint VAO, ShapeType type)
+{
+    glBindVertexArray(VAO);
+
+    switch (type) {
+        case ShapeType::Sphere: {
+            glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
+            break;
+        }
+        case ShapeType::Cube: {
+            glBindBuffer(GL_ARRAY_BUFFER, Shape::GetCubeVBO());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetCubeEBO());
+            break;
+        }
+        case ShapeType::Plane: {
+            glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
+            break;
+        }
+        default: {
+            glBindBuffer(GL_ARRAY_BUFFER, Shape::GetSphereVBO());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetSphereEBO());
+        }
+    }
+
+    // Vertices positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+    glEnableVertexAttribArray(4);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    shapeType = type;
+}
+
 void end_frame()
 {
     TimeManager::Update();
@@ -962,6 +1017,19 @@ void imgui_render()
         ImGui::EndMenuBar();
     }
 
+    if (ImGui::BeginCombo("Shape", to_string(shapeType).c_str()))
+    {
+        for (size_t i = 0; i < size<ShapeType>(); ++i) {
+            ShapeType acc = (ShapeType)i;
+            if (ImGui::Selectable(to_string(acc).c_str(), shapeType == acc))
+            {
+                set_shape(quadVAO, acc);
+                break;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
     for (int i = 0; i < 6; ++i)
     {
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
@@ -986,11 +1054,11 @@ void imgui_render()
 
         if (imageTextures[i] != nullptr)
         {
-            ImGui::Image((void*)(intptr_t)imageTextures[i]->GetId(), ImVec2(128, 128));
+            ImGui::Image((intptr_t)imageTextures[i]->GetId(), ImVec2(128, 128));
         }
         else 
         {
-            ImGui::Image((void*)(intptr_t)(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture), ImVec2(128, 128));
+            ImGui::Image((intptr_t)(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture), ImVec2(128, 128));
         }
     }
 

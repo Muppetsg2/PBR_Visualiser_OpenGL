@@ -130,7 +130,7 @@ private:
 	glm::ivec2 _size;
 	int _channelsNum;
 
-	const GLchar* _path;
+	std::string _path;
 	bool _hdr;
 
 	TextureFormat _format;
@@ -160,6 +160,7 @@ public:
 
 	GLuint GetId() const;
 	glm::ivec2 GetSize() const;
+	std::string GetPath() const;
 	int GetWidth() const;
 	int GetHeight() const;
 	int GetChannelsNum() const;

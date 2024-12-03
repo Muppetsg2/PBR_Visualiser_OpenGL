@@ -345,6 +345,8 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 			{
 				dialogInfo->resultPath = dialogInfo->directoryPath / dialogInfo->fileName;
 
+				// check is file
+
 				if (std::filesystem::exists(dialogInfo->resultPath))
 				{
 					fileNameSortOrder = ImGuiFileDialogSortOrder_None;
@@ -402,6 +404,33 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 				*open = false;
 			}
 		}
+		/*
+		else if (dialogInfo->type == ImGuiFileDialogType_OpenDirectory)
+		{
+			if (ImGui::Button("Open"))
+			{
+				dialogInfo->resultPath = dialogInfo->directoryPath;
+
+				// check is directory
+
+				if (std::filesystem::exists(dialogInfo->resultPath))
+				{
+					fileNameSortOrder = ImGuiFileDialogSortOrder_None;
+					sizeSortOrder = ImGuiFileDialogSortOrder_None;
+					typeSortOrder = ImGuiFileDialogSortOrder_None;
+					dateSortOrder = ImGuiFileDialogSortOrder_None;
+
+					dialogInfo->refreshInfo = false;
+					dialogInfo->currentIndex = 0;
+					dialogInfo->currentFiles.clear();
+					dialogInfo->currentDirectories.clear();
+
+					complete = true;
+					*open = false;
+				}
+			}
+		}
+		*/
 	}
 
 	ImGui::End();
