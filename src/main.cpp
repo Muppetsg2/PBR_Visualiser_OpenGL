@@ -71,8 +71,11 @@ ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK
 
 ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
 
+ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
+
 void printHelp();
 void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
+void processSkyArgument(const std::string& arg, SkyboxEnum& sky);
 void processNameArgument(const std::string& arg, std::string& fileName);
 void processDirectoryArgument(const std::string& arg, std::string& direc);
 void processPositionArgument(const std::string& arg, RenderPosition& position);
@@ -121,6 +124,18 @@ glm::mat4 trans = glm::mat4(1.f);
 float height_scale = 0.04f;
 
 #if !_DEBUG
+std::vector<std::string> skyboxPaths =
+{
+    "/res/skybox/rooitou_park_4k.hdr",
+    "/res/skybox/hilly_terrain_01_4k.hdr",
+    "/res/skybox/brown_photostudio_01_4k.hdr",
+    "/res/skybox/modern_bathroom_4k.hdr",
+    "/res/skybox/moonless_golf_4k.hdr",
+    "/res/skybox/snowy_field_4k.hdr",
+    "/res/skybox/venice_sunset_4k.hdr",
+    "/res/skybox/satara_night_4k.hdr"
+};
+
 glm::vec3 quadVerts[4] = {
     { 0.f, -.5f, -.5f },
     {  0.f, -.5f, .5f  },
@@ -159,10 +174,12 @@ int main(int argc, char** argv)
     std::string fileName;
     std::string saveDir;
     std::vector<std::string> imgPaths;
+    SkyboxEnum sky = SkyboxEnum::DEFAULT;
     RenderPosition position = RenderPosition::DEFAULT;
     RenderResolution resolution = RenderResolution::DEFAULT;
 
     if (argc > 1) {
+        bool expectSky = false;
         bool expectName = false;
         bool expectDirectory = false;
         bool expectPosition = false;
@@ -193,6 +210,10 @@ int main(int argc, char** argv)
                 processPositionArgument(arg, position);
                 expectPosition = false;
             }
+            else if (expectSky) {
+                processSkyArgument(arg, sky);
+                expectSky = false;
+            }
             else if (expectResolution) {
                 processResolutionArgument(arg, resolution);
                 expectResolution = false;
@@ -205,6 +226,9 @@ int main(int argc, char** argv)
             }
             else if (arg == "-p") {
                 expectPosition = true;
+            }
+            else if (arg == "-s") {
+                expectSky = true;
             }
             else if (arg == "-r") {
                 expectResolution = true;
@@ -223,6 +247,9 @@ int main(int argc, char** argv)
         }
         if (expectPosition) {
             spdlog::warn("The '-p' prefix was used, but no position was specified!");
+        }
+        if (expectSky) {
+            spdlog::warn("The '-s' prefix was used, but no skybox was specified!");
         }
         if (expectResolution) {
             spdlog::warn("The '-r' prefix was used, but no resolution was specified!");
@@ -292,7 +319,9 @@ int main(int argc, char** argv)
 #if _DEBUG
     Skybox::Init(window, exeDirPath, "./res/skybox/rooitou_park_4k.hdr");
 #else
-    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), exeDirPath, std::string(exeDirPath + "/res/skybox/rooitou_park_4k.hdr").c_str());
+    spdlog::info("Skybox: {}", to_string(sky));
+
+    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), exeDirPath, std::string(exeDirPath + skyboxPaths[(uint8_t)(sky != SkyboxEnum::DEFAULT ? sky : SkyboxEnum::PARK)]).c_str());
 
     for (size_t i = 0; i < imgPaths.size(); ++i) {
         TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
@@ -389,6 +418,8 @@ int main(int argc, char** argv)
             break;
         }
     }
+
+    spdlog::info("Position: {}", to_string(position));
 #endif
 
 #if _DEBUG
@@ -688,7 +719,7 @@ void printHelp() {
     spdlog::set_pattern("%v");
 
     spdlog::info("Usage:");
-    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-r <resolution>]");
+    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>]");
     spdlog::info("Options:");
     spdlog::info("  -h                  Display this help message and exit.");
     spdlog::info("  -f <image_path>     Specify up to 6 image paths to process. Additional paths will be ignored.");
@@ -697,6 +728,8 @@ void printHelp() {
     spdlog::info("  -d <directory_path> Specify the directory where files will be saved. Default is the current executable path.");
     spdlog::info("  -p <position>       Specify the position of the plane in world. Accepted values: top, bottom, front, back, left, right.");
     spdlog::info("                      Default position is 'back'.");
+    spdlog::info("  -s <skybox>         Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
+    spdlog::info("                      Default skybox texture is 'park'.");
     spdlog::info("  -r <resolution>     Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
     spdlog::info("                      Default resolution is 'r2k'.");
     spdlog::info("                      The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
@@ -728,6 +761,34 @@ void processFileArguments(int& i, int argc, char** argv, std::vector<std::string
 
     if (i < argc && std::string(argv[i])[0] == '-') {
         --i;
+        return;
+    }
+}
+
+void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
+{
+    //PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
+    static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night" };
+
+    if (sky != SkyboxEnum::DEFAULT) {
+        spdlog::warn("Skybox has already been specified! Ignoring additional resolution.");
+        return;
+    }
+
+    std::string res = arg;
+
+    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    auto item = std::find(validSkyboxes.begin(), validSkyboxes.end(), res);
+    if (item != validSkyboxes.end()) {
+        sky = (SkyboxEnum)(uint8_t)(item - validSkyboxes.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid skybox argument: '{}'. Accepted values are: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.", arg);
         return;
     }
 }

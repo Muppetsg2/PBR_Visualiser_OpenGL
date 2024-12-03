@@ -16,7 +16,8 @@ enum ImGuiFileDialogType_
 {
 	ImGuiFileDialogType_OpenFile,
 	ImGuiFileDialogType_SaveFile,
-	ImGuiFileDialogType_COUNT
+	ImGuiFileDialogType_COUNT,
+	ImGuiFileDialogType_OpenDirectory
 };
 
 struct ImFileDialogInfo

@@ -17,8 +17,8 @@ private:
     static bool _hdr;
 
 #if _DEBUG
-    static bool _openImageDialogs[7];
-    static ImFileDialogInfo _imageDialogInfos[7];
+    static bool _openImageDialogs[8];
+    static ImFileDialogInfo _imageDialogInfos[8];
 #endif
 
     static std::string _paths[6];

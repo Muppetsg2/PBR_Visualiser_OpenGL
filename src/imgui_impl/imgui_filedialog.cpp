@@ -59,6 +59,9 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 	static ImGuiFileDialogSortOrder dateSortOrder = ImGuiFileDialogSortOrder_None;
 	static ImGuiFileDialogSortOrder typeSortOrder = ImGuiFileDialogSortOrder_None;
 
+	static bool directoryChooseError = false;
+	static bool fileChooseError = false;
+
 	assert(dialogInfo != nullptr);
 
 	bool complete = false;
@@ -244,6 +247,7 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 			if (ImGui::Selectable(directoryName.string().c_str(), dialogInfo->currentIndex == index, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 			{
 				dialogInfo->currentIndex = index;
+				if (dialogInfo->type == ImGuiFileDialogType_OpenDirectory) dialogInfo->fileName = directoryName;
 
 				if (ImGui::IsMouseDoubleClicked(0))
 				{
@@ -345,24 +349,35 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 			{
 				dialogInfo->resultPath = dialogInfo->directoryPath / dialogInfo->fileName;
 
-				// check is file
-
 				if (std::filesystem::exists(dialogInfo->resultPath))
 				{
-					fileNameSortOrder = ImGuiFileDialogSortOrder_None;
-					sizeSortOrder = ImGuiFileDialogSortOrder_None;
-					typeSortOrder = ImGuiFileDialogSortOrder_None;
-					dateSortOrder = ImGuiFileDialogSortOrder_None;
+					if (std::filesystem::is_regular_file(dialogInfo->resultPath)) {
+						fileNameSortOrder = ImGuiFileDialogSortOrder_None;
+						sizeSortOrder = ImGuiFileDialogSortOrder_None;
+						typeSortOrder = ImGuiFileDialogSortOrder_None;
+						dateSortOrder = ImGuiFileDialogSortOrder_None;
 
-					dialogInfo->refreshInfo = false;
-					dialogInfo->currentIndex = 0;
-					dialogInfo->currentFiles.clear();
-					dialogInfo->currentDirectories.clear();
+						fileChooseError = false;
 
-					complete = true;
-					*open = false;
+						dialogInfo->refreshInfo = false;
+						dialogInfo->currentIndex = 0;
+						dialogInfo->currentFiles.clear();
+						dialogInfo->currentDirectories.clear();
+
+						complete = true;
+						*open = false;
+					}
+					else {
+						fileChooseError = true;
+					}
 				}
 			}
+
+			if (fileChooseError) {
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0), "The selected item is not a regular file");
+			}
+
 		}
 		else if (dialogInfo->type == ImGuiFileDialogType_SaveFile)
 		{
@@ -404,33 +419,41 @@ bool ImGui::FileDialog(bool* open, ImFileDialogInfo* dialogInfo)
 				*open = false;
 			}
 		}
-		/*
 		else if (dialogInfo->type == ImGuiFileDialogType_OpenDirectory)
 		{
 			if (ImGui::Button("Open"))
 			{
-				dialogInfo->resultPath = dialogInfo->directoryPath;
-
-				// check is directory
+				dialogInfo->resultPath = dialogInfo->directoryPath / dialogInfo->fileName;
 
 				if (std::filesystem::exists(dialogInfo->resultPath))
 				{
-					fileNameSortOrder = ImGuiFileDialogSortOrder_None;
-					sizeSortOrder = ImGuiFileDialogSortOrder_None;
-					typeSortOrder = ImGuiFileDialogSortOrder_None;
-					dateSortOrder = ImGuiFileDialogSortOrder_None;
+					if (std::filesystem::is_directory(dialogInfo->resultPath)) {
+						fileNameSortOrder = ImGuiFileDialogSortOrder_None;
+						sizeSortOrder = ImGuiFileDialogSortOrder_None;
+						typeSortOrder = ImGuiFileDialogSortOrder_None;
+						dateSortOrder = ImGuiFileDialogSortOrder_None;
 
-					dialogInfo->refreshInfo = false;
-					dialogInfo->currentIndex = 0;
-					dialogInfo->currentFiles.clear();
-					dialogInfo->currentDirectories.clear();
+						directoryChooseError = false;
 
-					complete = true;
-					*open = false;
+						dialogInfo->refreshInfo = false;
+						dialogInfo->currentIndex = 0;
+						dialogInfo->currentFiles.clear();
+						dialogInfo->currentDirectories.clear();
+
+						complete = true;
+						*open = false;
+					}
+					else {
+						directoryChooseError = true;
+					}
 				}
 			}
+
+			if (directoryChooseError) {
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0), "The selected item is not a directory");
+			}
 		}
-		*/
 	}
 
 	ImGui::End();

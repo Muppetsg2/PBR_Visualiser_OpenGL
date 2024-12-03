@@ -14,8 +14,8 @@ bool Skybox::_init = false;
 bool Skybox::_hdr = false;
 
 #if _DEBUG
-bool Skybox::_openImageDialogs[7] = { false, false, false, false, false, false, false };
-ImFileDialogInfo Skybox::_imageDialogInfos[7];
+bool Skybox::_openImageDialogs[8] = { false, false, false, false, false, false, false, false };
+ImFileDialogInfo Skybox::_imageDialogInfos[8];
 #endif
 
 std::string Skybox::_paths[6] = { "", "", "", "", "", "" };
@@ -341,6 +341,8 @@ bool Skybox::LoadSavedData(std::string dir)
 	gli::ivec2 extent = texCube.extent();
 	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
 
+	Skybox::_hdr = GL_RGB32F == (int)Format.Internal;
+
 	for (std::size_t face = 0; face < texCube.faces(); ++face) {
 		for (std::size_t level = 0; level < texCube.levels(); ++level) {
 			glm::ivec2 levelExtent(texCube.extent(level));
@@ -514,6 +516,8 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 
 	gli::ivec2 extent = texCube.extent();
 	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
+
+	Skybox::_hdr = GL_RGB32F == (int)Format.Internal;
 
 	for (std::size_t face = 0; face < texCube.faces(); ++face) {
 		for (std::size_t level = 0; level < texCube.levels(); ++level) {
@@ -2095,9 +2099,27 @@ void Skybox::DrawEditor(bool* open)
 
 	static bool _facesOpen = false;
 
-	if (ImGui::Button("Load Skybox from faces"))
+	if (ImGui::Button("Load Skybox from Faces"))
 	{
 		_facesOpen = true;
+	}
+
+	if (ImGui::Button("Load Skybox from Data"))
+	{
+		Skybox::_openImageDialogs[7] = true;
+		Skybox::_imageDialogInfos[7].title = "Choose Skybox Data Folder";
+		Skybox::_imageDialogInfos[7].type = ImGuiFileDialogType_OpenDirectory;
+		Skybox::_imageDialogInfos[7].directoryPath = std::filesystem::current_path().append("./res/skybox/");
+	}
+
+	if (Skybox::_openImageDialogs[7])
+	{
+		if (ImGui::FileDialog(&Skybox::_openImageDialogs[7], &Skybox::_imageDialogInfos[7]))
+		{
+			LoadSavedDataToChange(Skybox::_imageDialogInfos[7].resultPath.string(), true);
+
+			Skybox::_hdr = true;
+		}
 	}
 
 	ImGui::Text("Initialized: %s", _init ? "True" : "False");
