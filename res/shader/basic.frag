@@ -29,6 +29,8 @@ uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
 
 uniform float height_scale;
+uniform float exposure;
+uniform float colorIntensity;
 
 uniform vec3 camPos;
 
@@ -162,7 +164,8 @@ void main()
     F0 = mix(F0, albedo, metallic);
 
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < POINT_LIGHTS; ++i)
+    //for(int i = 0; i < POINT_LIGHTS; ++i)
+    for(int i = POINT_LIGHTS; i < POINT_LIGHTS; ++i)
     {
         vec3 L = normalize(lightPositions[i] - fs_in.WorldPos);
         //vec3 L = normalize(fs_in.TangentLightPositions[i] - fs_in.TangentWorldPos);
@@ -207,8 +210,15 @@ void main()
 
     vec3 color = ambient + Lo;
 
-    color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0/2.2)); 
+    // Exposure
+    //color *= exposure;
+    // Tonemapping Reinharda
+    //color = color / (color + vec3(1.0));
+    color = vec3(1.0) - exp(-color * exposure);
+    // Color Intensity
+    color *= colorIntensity;
+    // Gamma Correction
+    color = pow(color, vec3(1.0/2.2));
 
     FragColor = vec4(color, 1.0);
 }

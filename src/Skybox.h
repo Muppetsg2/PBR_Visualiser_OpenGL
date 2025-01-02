@@ -16,6 +16,9 @@ private:
     static bool _init;
     static bool _hdr;
 
+    static float _exposure;
+    static float _colorIntensity;
+
 #if _DEBUG
     static bool _openImageDialogs[8];
     static ImFileDialogInfo _imageDialogInfos[8];
@@ -53,6 +56,12 @@ public:
     static void UseIrradianceTexture(unsigned int samplerId);
     static void UsePrefilterTexture(unsigned int samplerId);
     static void UseBrdfLUTTexture(unsigned int samplerId);
+
+    static float GetExposure();
+    static float GetColorIntensity();
+
+    static void SetExposure(float value);
+    static void SetColorIntensity(float value);
 
 #if _DEBUG
     static void ChangeTexture(const GLchar* hdr);

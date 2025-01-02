@@ -13,6 +13,9 @@ GLuint Skybox::_brdfLUTTexture = 0;
 bool Skybox::_init = false;
 bool Skybox::_hdr = false;
 
+float Skybox::_exposure = 1.0f;
+float Skybox::_colorIntensity = 1.0f;
+
 #if _DEBUG
 bool Skybox::_openImageDialogs[8] = { false, false, false, false, false, false, false, false };
 ImFileDialogInfo Skybox::_imageDialogInfos[8];
@@ -1437,7 +1440,8 @@ void Skybox::Draw()
 	glCullFace(GL_FRONT);
 	Skybox::_shader->Use();
 	Skybox::_shader->SetInt("skybox", 0);
-	Skybox::_shader->SetFloat("exposure", 1.0);
+	Skybox::_shader->SetFloat("exposure", _exposure);
+	Skybox::_shader->SetFloat("colorIntensity", _colorIntensity);
 	Skybox::_shader->SetBool("prefilter", false);
 	Skybox::_shader->SetFloat("mipmap", 0.0);
 	glBindVertexArray(Skybox::_vao);
@@ -1485,6 +1489,30 @@ void Skybox::UseBrdfLUTTexture(unsigned int samplerId)
 {
 	glActiveTexture(GL_TEXTURE0 + samplerId);
 	glBindTexture(GL_TEXTURE_2D, Skybox::_brdfLUTTexture);
+}
+
+float Skybox::GetExposure()
+{
+	return _exposure;
+}
+
+float Skybox::GetColorIntensity()
+{
+	return _colorIntensity;
+}
+
+void Skybox::SetExposure(float value)
+{
+	if (_exposure == value) return;
+
+	_exposure = value;
+}
+
+void Skybox::SetColorIntensity(float value)
+{
+	if (_colorIntensity == value) return;
+
+	_colorIntensity = value;
 }
 
 #if _DEBUG
@@ -2133,6 +2161,16 @@ void Skybox::DrawEditor(bool* open)
 	if (_brdfLUTTexture) {
 		ImGui::Text("BRDF LUT Texture:");
 		ImGui::Image((intptr_t)(_brdfLUTTexture), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+	}
+
+	float exp = _exposure;
+	if (ImGui::SliderFloat("Exposure##Skybox", &exp, 0.0f, 11.0f, "Exposure: %.2f")) {
+		SetExposure(exp);
+	}
+
+	float intensity = _colorIntensity;
+	if (ImGui::SliderFloat("Color Intensity##Skybox", &intensity, 0.0f, 4.0f, "Intensity: %.2f")) {
+		SetColorIntensity(intensity);
 	}
 
 	ImGui::End();

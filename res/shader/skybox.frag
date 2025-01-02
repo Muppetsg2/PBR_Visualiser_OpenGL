@@ -8,6 +8,7 @@ uniform bool prefilter;
 uniform float mipmap;
 
 uniform float exposure;
+uniform float colorIntensity;
 
 void main()
 {
@@ -18,6 +19,9 @@ void main()
 
     //envColor = envColor / (envColor + vec3(1.0));
     envColor = vec3(1.0) - exp(-envColor * exposure);
+    // Color Intensity
+    envColor *= colorIntensity;
+    // Gamma Correction
     envColor = pow(envColor, vec3(1.0/2.2)); 
 
     FragColor = vec4(envColor, 1.0);

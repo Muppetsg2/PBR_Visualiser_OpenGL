@@ -33,6 +33,7 @@
 
 // LIBs
 #include <string>
+#include <format>
 #include <memory>
 #include <fstream>
 #include <vector>
@@ -43,3 +44,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <direct.h>
+
+// PROGRAM INFO
+#include <version.h>

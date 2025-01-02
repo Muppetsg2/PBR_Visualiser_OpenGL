@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
-project(PBR_Visualiser VERSION 1.0)
+
+include(cmake/utils.cmake)
+
+pbr_visualiser_extract_version()
+
+project(PBR_Visualiser VERSION ${PBR_VISUALISER_VERSION})
+message(STATUS "Build PBR_Visualiser: ${PBR_VISUALISER_VERSION}")
 
 IF (WIN32)
   message(NOTICE "\n")

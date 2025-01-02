@@ -1,3 +1,13 @@
+//
+//     ___  ___  ___    _   ___               ___            
+//    / _ \/ _ )/ _ \  | | / (_)__ __ _____ _/ (_)__ ___ ____
+//   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
+//  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
+//
+// Version: 1.2.0
+// Author: Marceli Antosik
+// Last Update: 02.01.2025
+
 #if !CONSOLE_ENABLED
 
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
@@ -73,6 +83,9 @@ ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K,
 
 ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
 
+bool isExposureSet = false;
+bool isIntensitySet = false;
+
 void printHelp();
 void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
 void processSkyArgument(const std::string& arg, SkyboxEnum& sky);
@@ -80,13 +93,19 @@ void processNameArgument(const std::string& arg, std::string& fileName);
 void processDirectoryArgument(const std::string& arg, std::string& direc);
 void processPositionArgument(const std::string& arg, RenderPosition& position);
 void processResolutionArgument(const std::string& arg, RenderResolution& resolution);
+void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet);
+void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet);
 #else
-
 ENUM_CLASS_BASE_VALUE(ShapeType, uint8_t, Sphere, 0, Cube, 1, Plane, 2)
 
+ENUM_CLASS_BASE_VALUE(PlaneNormalOrientation, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5)
+
 ShapeType shapeType = ShapeType::Sphere;
+PlaneNormalOrientation planeNormalOrientation = PlaneNormalOrientation::TOP;
 
 void set_shape(GLuint VAO, ShapeType type);
+void set_plane_normal_orientation(PlaneNormalOrientation orientation);
+glm::mat4 get_plane_normal_orientation_mat(glm::mat4 planeTrans, PlaneNormalOrientation orientation);
 void end_frame();
 void input();
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -122,6 +141,8 @@ GLuint quadVAO = 0;
 Shader* PBR = nullptr;
 glm::mat4 trans = glm::mat4(1.f);
 float height_scale = 0.04f;
+float exposure = 1.f;
+float colorIntensity = 1.f;
 
 #if !_DEBUG
 std::vector<std::string> skyboxPaths =
@@ -138,14 +159,14 @@ std::vector<std::string> skyboxPaths =
 
 glm::vec3 quadVerts[4] = {
     { 0.f, -.5f, -.5f },
-    {  0.f, -.5f, .5f  },
-    { 0.f, .5f,  -.5f  },
-    {  0.f, .5f,  .5f  }
+    { 0.f, -.5f, .5f  },
+    { 0.f, .5f, -.5f  },
+    { 0.f, .5f,  .5f  }
 };
 
 unsigned int quadIndi[6] = {
-    2, 1, 0,
-    2, 3, 1
+    0, 1, 2,
+    1, 3, 2
 };
 #endif
 
@@ -166,10 +187,24 @@ int main(int argc, char** argv)
 {
     exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
 
+    spdlog::set_pattern("%v");
+
+    spdlog::info("     ___  ___  ___    _   ___               ___              ");
+    spdlog::info("    / _ \\/ _ )/ _ \\  | | / (_)__ __ _____ _/ (_)__ ___ ____");
+    spdlog::info("   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/  ");
+    spdlog::info("  /_/  /____/_/|_|   |___/_/___/\\_,_/\\_,_/_/_/___/\\__/_/  \n");
+    spdlog::info("                       Version: {}", PBR_VISUALISER_VERSION_STR);
+    spdlog::info("                   Author: Marceli Antosik");
+    spdlog::info("                   Last Update: {}", PBR_VISUALISER_LAST_UPDATE);
+
 #if _DEBUG
-    spdlog::info("Configuration: DEBUG");
+    spdlog::info("                    Configuration: DEBUG\n");
 #else
-    spdlog::info("Configuration: RELEASE");
+    spdlog::info("                   Configuration: RELEASE\n");
+
+    // Default spdlog pattern
+    // [2014-10-31 23:46:59.678] [my_loggername] [info] Some message
+    spdlog::set_pattern("%+");
 
     std::string fileName;
     std::string saveDir;
@@ -184,6 +219,8 @@ int main(int argc, char** argv)
         bool expectDirectory = false;
         bool expectPosition = false;
         bool expectResolution = false;
+        bool expectExposure = false;
+        bool expectIntensity = false;
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -218,6 +255,14 @@ int main(int argc, char** argv)
                 processResolutionArgument(arg, resolution);
                 expectResolution = false;
             }
+            else if (expectExposure) {
+                processExposureArgument(arg, exposure, isExposureSet);
+                expectExposure = false;
+            }
+            else if (expectIntensity) {
+                processIntensityArgument(arg, colorIntensity, isIntensitySet);
+                expectIntensity = false;
+            }
             else if (arg == "-n") {
                 expectName = true;
             }
@@ -232,6 +277,12 @@ int main(int argc, char** argv)
             }
             else if (arg == "-r") {
                 expectResolution = true;
+            }
+            else if (arg == "-e") {
+                expectExposure = true;
+            }
+            else if (arg == "-i") {
+                expectIntensity = true;
             }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
@@ -253,6 +304,12 @@ int main(int argc, char** argv)
         }
         if (expectResolution) {
             spdlog::warn("The '-r' prefix was used, but no resolution was specified!");
+        }
+        if (expectExposure) {
+            spdlog::warn("The '-e' prefix was used, but no exposure was specified!");
+        }
+        if (expectIntensity) {
+            spdlog::warn("The '-i' prefix was used, but no color intensity was specified!");
         }
 
     }
@@ -342,6 +399,7 @@ int main(int argc, char** argv)
 
 #if _DEBUG
     set_shape(quadVAO, shapeType);
+    set_plane_normal_orientation(planeNormalOrientation);
 #else
     glBindVertexArray(quadVAO);
 
@@ -377,17 +435,17 @@ int main(int argc, char** argv)
 #else
     switch (position) {
         case RenderPosition::TOP: {
-            Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
-            Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
-            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
-            break;
-        }
-        case RenderPosition::BOTTOM: {
             Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
             Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
             trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
             trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case RenderPosition::BOTTOM: {
+            Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
+            Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
+            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
             break;
         }
         case RenderPosition::FRONT: {
@@ -641,6 +699,8 @@ void render()
     }
 
     PBR->SetFloat("height_scale", height_scale);
+    PBR->SetFloat("exposure", exposure);
+    PBR->SetFloat("colorIntensity", colorIntensity);
 
     Skybox::UseIrradianceTexture(6);
     PBR->SetInt("irradianceMap", 6);
@@ -665,6 +725,8 @@ void render()
             break;
         }
         case ShapeType::Plane: {
+            glm::mat4 pTrans = get_plane_normal_orientation_mat(trans, planeNormalOrientation);
+            PBR->SetMat4("model", pTrans);
             glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
             break;
         }
@@ -719,20 +781,23 @@ void printHelp() {
     spdlog::set_pattern("%v");
 
     spdlog::info("Usage:");
-    spdlog::info("  PBR_Visualiser.exe [-h] [-f <image_path1> <image_path2> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>]");
+    spdlog::info("  PBR_Visualiser.exe [-h] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>]");
     spdlog::info("Options:");
-    spdlog::info("  -h                  Display this help message and exit.");
-    spdlog::info("  -f <image_path>     Specify up to 6 image paths to process. Additional paths will be ignored.");
-    spdlog::info("                      Example: program -f image1.jpg image2.png image3.png");
-    spdlog::info("  -n <output_name>    Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
-    spdlog::info("  -d <directory_path> Specify the directory where files will be saved. Default is the current executable path.");
-    spdlog::info("  -p <position>       Specify the position of the plane in world. Accepted values: top, bottom, front, back, left, right.");
-    spdlog::info("                      Default position is 'back'.");
-    spdlog::info("  -s <skybox>         Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
-    spdlog::info("                      Default skybox texture is 'park'.");
-    spdlog::info("  -r <resolution>     Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
-    spdlog::info("                      Default resolution is 'r2k'.");
-    spdlog::info("                      The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
+    spdlog::info("  -h                   Display this help message and exit.");
+    spdlog::info("  -f <image_path>      Specify up to 6 image paths to process. Additional paths will be ignored.");
+    spdlog::info("                       The paths must be in the order: albedo, normal, metallness, displacement, roughness, ambient occlusion.");
+    spdlog::info("                       Example: program -f albedo_image.jpg normal_image.png metalness_image.png");
+    spdlog::info("  -n <output_name>     Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
+    spdlog::info("  -d <directory_path>  Specify the directory where files will be saved. Default is the current executable path.");
+    spdlog::info("  -p <position>        Specify the position of the plane in world. Accepted values: top, bottom, front, back, right, left.");
+    spdlog::info("                       Default position is 'back'.");
+    spdlog::info("  -s <skybox>          Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
+    spdlog::info("                       Default skybox texture is 'park'.");
+    spdlog::info("  -r <resolution>      Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
+    spdlog::info("                       Default resolution is 'r2k'.");
+    spdlog::info("                       The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
+    spdlog::info("  -e <exposure_value>  Specify the exposure value of output image. Value must be in valid float format within range (0 - 11). Default value is 1.0.");
+    spdlog::info("  -i <color_intensity> Specify the color intensity value of output image. Value must be in valid float format within range (0 - 4). Default value is 1.0.");
 }
 
 void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths) {
@@ -767,7 +832,6 @@ void processFileArguments(int& i, int argc, char** argv, std::vector<std::string
 
 void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
 {
-    //PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
     static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night" };
 
     if (sky != SkyboxEnum::DEFAULT) {
@@ -817,7 +881,7 @@ void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
 }
 
 void processPositionArgument(const std::string& arg, RenderPosition& position) {
-    static const std::vector<std::string> validPositions = { "top", "bottom", "front", "back", "left", "right" };
+    static const std::vector<std::string> validPositions = { "top", "bottom", "front", "back", "right", "left" };
 
     if (position != RenderPosition::DEFAULT) {
         spdlog::warn("Position has already been specified! Ignoring additional position.");
@@ -837,7 +901,7 @@ void processPositionArgument(const std::string& arg, RenderPosition& position) {
         return;
     }
     else {
-        spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, left, right.", arg);
+        spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, right, left.", arg);
         return;
     }
 }
@@ -866,6 +930,72 @@ void processResolutionArgument(const std::string& arg, RenderResolution& resolut
         spdlog::warn("Invalid resolution argument: '{}'. Accepted values are: r128, r256, r512, r1k, r2k, r4k.", arg);
         return;
     }
+}
+
+void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet) {
+
+    const float MIN_EXPOSURE_VALUE = 0.0f;
+    const float MAX_EXPOSURE_VALUE = 11.0f;
+
+    if (isValueSet) {
+        spdlog::warn("Exposure value has already been specified and is valid! Ignoring additional input.");
+        return;
+    }
+
+    std::istringstream iss(arg);
+    float extractedValue;
+    if (!(iss >> extractedValue)) {
+        spdlog::warn("Invalid exposure float format in input string: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    // Consume any remaining whitespace in the stream
+    iss >> std::ws;
+    if (iss.peek() != EOF) {
+        spdlog::warn("Input exposure string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    if (extractedValue < MIN_EXPOSURE_VALUE || extractedValue > MAX_EXPOSURE_VALUE) {
+        spdlog::warn("Exposure value out of range ({} - {}): {}", MIN_EXPOSURE_VALUE, MAX_EXPOSURE_VALUE, extractedValue);
+        return;
+    }
+
+    expValue = extractedValue;
+    isValueSet = true;
+}
+
+void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet) {
+
+    const float MIN_INTENSITY_VALUE = 0.0f;
+    const float MAX_INTENSITY_VALUE = 4.0f;
+
+    if (isValueSet) {
+        spdlog::warn("Color intensity value has already been specified and is valid! Ignoring additional input.");
+        return;
+    }
+
+    std::istringstream iss(arg);
+    float extractedValue;
+    if (!(iss >> extractedValue)) {
+        spdlog::warn("Invalid color intensity float format in input string: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    // Consume any remaining whitespace in the stream
+    iss >> std::ws;
+    if (iss.peek() != EOF) {
+        spdlog::warn("Input color intensity string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    if (extractedValue < MIN_INTENSITY_VALUE || extractedValue > MAX_INTENSITY_VALUE) {
+        spdlog::warn("Color intensity value out of range ({} - {}): {}", MIN_INTENSITY_VALUE, MAX_INTENSITY_VALUE, extractedValue);
+        return;
+    }
+
+    intensityValue = extractedValue;
+    isValueSet = true;
 }
 #else
 void set_shape(GLuint VAO, ShapeType type)
@@ -910,7 +1040,47 @@ void set_shape(GLuint VAO, ShapeType type)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    spdlog::info("Shape Type: {}", to_string(type));
+
     shapeType = type;
+}
+
+void set_plane_normal_orientation(PlaneNormalOrientation orientation)
+{
+    spdlog::info("Plane Normal Orientation: {}", to_string(orientation));
+
+    planeNormalOrientation = orientation;
+}
+
+glm::mat4 get_plane_normal_orientation_mat(glm::mat4 planeTrans, PlaneNormalOrientation orientation)
+{
+    switch (orientation) {
+        case PlaneNormalOrientation::TOP: {
+            break;
+        }
+        case PlaneNormalOrientation::BOTTOM: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(180.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case PlaneNormalOrientation::FRONT: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case PlaneNormalOrientation::BACK: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case PlaneNormalOrientation::RIGHT: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
+            break;
+        }
+        case PlaneNormalOrientation::LEFT: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
+            break;
+        }
+    }
+
+    return planeTrans;
 }
 
 void end_frame()
@@ -1091,6 +1261,22 @@ void imgui_render()
         ImGui::EndCombo();
     }
 
+    if (shapeType == ShapeType::Plane) 
+    {
+        if (ImGui::BeginCombo("Plane Normal Orientation", to_string(planeNormalOrientation).c_str()))
+        {
+            for (size_t i = 0; i < size<PlaneNormalOrientation>(); ++i) {
+                PlaneNormalOrientation acc = (PlaneNormalOrientation)i;
+                if (ImGui::Selectable(to_string(acc).c_str(), planeNormalOrientation == acc))
+                {
+                    set_plane_normal_orientation(acc);
+                    break;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
     for (int i = 0; i < 6; ++i)
     {
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
@@ -1124,6 +1310,8 @@ void imgui_render()
     }
 
     ImGui::DragFloat("Height", &height_scale, 0.1f, 0.0f, FLT_MAX);
+    ImGui::SliderFloat("Exposure", &exposure, 0.0f, 11.0f, "Exposure: %.2f");
+    ImGui::SliderFloat("Color Intensity", &colorIntensity, 0.0f, 4.0f, "Intensity: %.2f");
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
