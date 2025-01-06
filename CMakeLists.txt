@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
-include(cmake/utils.cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(global_settings)
+include(utils)
 
 pbr_visualiser_extract_version()
 
@@ -15,10 +17,6 @@ IF (WIN32)
   message(NOTICE "\n********************************************************************")
   message(NOTICE "\n")
 ENDIF()
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-include(global_settings)
 
 # ---- Dependencies ----
 add_subdirectory(thirdparty)

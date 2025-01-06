@@ -6,42 +6,38 @@ private:
 	// Vertices
 	static Vertex _cubeVertices[24];
 	static Vertex _quadVertices[4];
-
-#if _DEBUG
+#if WINDOW_APP
 	static Vertex _sphereVertices[1025];
 #endif
 
 	// Indices
 	static unsigned int _cubeIndices[36];
 	static unsigned int _quadIndices[6];
-
-#if _DEBUG
+#if WINDOW_APP
 	static unsigned int _sphereIndices[5952];
 #endif
 
 	// Initialization
 	static bool _cubeInitialized;
 	static bool _quadInitialized;
-
-#if _DEBUG
+#if WINDOW_APP
 	static bool _sphereInitialized;
 #endif
 
 	// VBO
 	static GLuint _cubeVBO;
 	static GLuint _quadVBO;
-
-#if _DEBUG
+#if WINDOW_APP
 	static GLuint _sphereVBO;
 #endif
 
 	// EBO
 	static GLuint _cubeEBO;
 	static GLuint _quadEBO;
-
-#if _DEBUG
+#if WINDOW_APP
 	static GLuint _sphereEBO;
 #endif
+
 public:
 	Shape() = default;
 	~Shape() = default;
@@ -85,7 +81,7 @@ public:
 		return _quadVBO;
 	}
 
-#if _DEBUG
+#if WINDOW_APP
 	static GLuint GetSphereVBO() {
 		if (!_sphereInitialized) {
 			glGenBuffers(1, &_sphereVBO);
@@ -145,7 +141,7 @@ public:
 		return _quadEBO;
 	}
 
-#if _DEBUG
+#if WINDOW_APP
 	static GLuint GetSphereEBO() {
 		if (!_sphereInitialized) {
 			glGenBuffers(1, &_sphereVBO);
@@ -175,7 +171,7 @@ public:
 		return 4;
 	}
 
-#if _DEBUG
+#if WINDOW_APP
 	static size_t GetSphereVerticesCount() {
 		return 1025;
 	}
@@ -190,7 +186,7 @@ public:
 		return 6;
 	}
 
-#if _DEBUG
+#if WINDOW_APP
 	static size_t GetSphereIndicesCount() {
 		return 5952;
 	}
@@ -205,7 +201,7 @@ public:
 		return _quadIndices;
 	}
 
-#if _DEBUG
+#if WINDOW_APP
 	static unsigned int* GetSphereIndices() {
 		return _sphereIndices;
 	}
@@ -222,7 +218,7 @@ public:
 			glDeleteBuffers(1, &Shape::_quadEBO);
 		}
 
-#if _DEBUG
+#if WINDOW_APP
 		if (_sphereInitialized) {
 			glDeleteBuffers(1, &Shape::_sphereVBO);
 			glDeleteBuffers(1, &Shape::_sphereEBO);
@@ -236,24 +232,21 @@ public:
 // Initialization
 bool Shape::_cubeInitialized = false;
 bool Shape::_quadInitialized = false;
-
-#if _DEBUG
+#if WINDOW_APP
 bool Shape::_sphereInitialized = false;
 #endif
 
 // VBO
 GLuint Shape::_cubeVBO = 0;
 GLuint Shape::_quadVBO = 0;
-
-#if _DEBUG
+#if WINDOW_APP
 GLuint Shape::_sphereVBO = 0;
 #endif
 
 // EBO
 GLuint Shape::_cubeEBO = 0;
 GLuint Shape::_quadEBO = 0;
-
-#if _DEBUG
+#if WINDOW_APP
 GLuint Shape::_sphereEBO = 0;
 #endif
 
@@ -298,7 +291,7 @@ Vertex Shape::_quadVertices[4] = {
 	{	.Position = glm::vec3(0.5f, 0.0f, 0.5f),	.TexCoords = glm::vec2(1.0f, 1.0f), .Normal = glm::vec3(0.0f, 1.0f, 0.0f), .Tangent = glm::vec3(1.0f, 0.0f, 0.0f), .Bitangent = glm::vec3(0.0f, 0.0f, 1.0f)		}
 };
 
-#if _DEBUG
+#if WINDOW_APP
 Vertex Shape::_sphereVertices[1025] = {
 	{.Position = glm::vec3(0.f, 1.f, 0.f), .TexCoords = glm::vec2(0.5f, 0.f), .Normal = glm::vec3(0.f, 1.f, 0.f), .Tangent = glm::vec3(0.f, 0.f, 1.f), .Bitangent = glm::vec3(-0.f, -0.049068f, -0.998795f) },
 	{.Position = glm::vec3(0.f, 0.995185f, 0.098017f), .TexCoords = glm::vec2(0.f, 0.03125f), .Normal = glm::vec3(0.f, 0.995185f, 0.098017f), .Tangent = glm::vec3(0.995185f, 0.f, -0.098017f), .Bitangent = glm::vec3(0.878875f, -0.055196f, 0.473848f) },
@@ -1354,7 +1347,7 @@ unsigned int Shape::_quadIndices[6] = {
 	2, 3, 1
 };
 
-#if _DEBUG
+#if WINDOW_APP
 unsigned int Shape::_sphereIndices[5952] = {
 	2, 0, 1,
 	992, 991, 1024,

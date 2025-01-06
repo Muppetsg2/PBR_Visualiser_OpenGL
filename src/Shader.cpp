@@ -1,4 +1,5 @@
 #include <Shader.h>
+#include <ShadersExtractor.h>
 
 void Shader::LoadShaderFromFile(const GLchar* vertPath, const GLchar* fragPath) 
 {
@@ -89,19 +90,296 @@ void Shader::LoadShaderFromFile(const GLchar* vertPath, const GLchar* fragPath)
     _fragPath = fragPath;
 }
 
+void Shader::LoadShaderFromFile(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath)
+{
+    std::string vertexCode;
+    std::string geometryCode;
+    std::string fragmentCode;
+    std::ifstream vShaderFile;
+    std::ifstream gShaderFile;
+    std::ifstream fShaderFile;
+
+    vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    try
+    {
+        vShaderFile.open(vertPath);
+        gShaderFile.open(geomPath);
+        fShaderFile.open(fragPath);
+        std::stringstream vShaderStream, gShaderStream, fShaderStream;
+
+        vShaderStream << vShaderFile.rdbuf();
+        gShaderStream << gShaderFile.rdbuf();
+        fShaderStream << fShaderFile.rdbuf();
+
+        vShaderFile.close();
+        gShaderFile.close();
+        fShaderFile.close();
+
+        vertexCode = vShaderStream.str();
+        geometryCode = gShaderStream.str();
+        fragmentCode = fShaderStream.str();
+    }
+    catch (std::ifstream::failure e)
+    {
+        spdlog::error("ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ");
+        return;
+    }
+    const char* vShaderCode = vertexCode.c_str();
+    const char* gShaderCode = geometryCode.c_str();
+    const char* fShaderCode = fragmentCode.c_str();
+
+    unsigned int vertex, geometry, fragment;
+    int success;
+    char infoLog[512];
+
+    // Vertex Shader  
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vShaderCode, NULL);
+    glCompileShader(vertex);
+
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(vertex);
+        return;
+    };
+
+    // Geometry Shader  
+    geometry = glCreateShader(GL_GEOMETRY_SHADER);
+    glShaderSource(geometry, 1, &gShaderCode, NULL);
+    glCompileShader(geometry);
+
+    glGetShaderiv(geometry, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(geometry, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(geometry);
+        return;
+    };
+
+    // Fragment Shader  
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fShaderCode, NULL);
+    glCompileShader(fragment);
+
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(fragment);
+        return;
+    };
+
+    // Program Object  
+    _programId = glCreateProgram();
+    glAttachShader(_programId, vertex);
+    glAttachShader(_programId, geometry);
+    glAttachShader(_programId, fragment);
+    glLinkProgram(_programId);
+
+    glGetProgramiv(_programId, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        glGetProgramInfoLog(_programId, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{}", infoLog);
+        glDeleteProgram(_programId);
+        _programId = 0;
+        return;
+    }
+
+    glDeleteShader(vertex);
+    glDeleteShader(geometry);
+    glDeleteShader(fragment);
+
+    _init = true;
+
+    _vertPath = vertPath;
+    _geomPath = geomPath;
+    _fragPath = fragPath;
+
+    _hasGeom = true;
+}
+
+void Shader::LoadShaderFromExtractor(std::string vertName, std::string fragName)
+{
+    std::string vertexCode = ShadersExtractor::GetShaderContent(vertName);
+    std::string fragmentCode = ShadersExtractor::GetShaderContent(fragName);
+
+    const char* vShaderCode = vertexCode.c_str();
+    const char* fShaderCode = fragmentCode.c_str();
+
+    unsigned int vertex, fragment;
+    int success;
+    char infoLog[512];
+
+    // Vertex Shader  
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vShaderCode, NULL);
+    glCompileShader(vertex);
+
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(vertex);
+        return;
+    };
+
+    // Fragment Shader  
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fShaderCode, NULL);
+    glCompileShader(fragment);
+
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(fragment);
+        return;
+    };
+
+    // Program Object  
+    _programId = glCreateProgram();
+    glAttachShader(_programId, vertex);
+    glAttachShader(_programId, fragment);
+    glLinkProgram(_programId);
+
+    glGetProgramiv(_programId, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        glGetProgramInfoLog(_programId, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{}", infoLog);
+        glDeleteProgram(_programId);
+        _programId = 0;
+        return;
+    }
+
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+
+    _init = true;
+
+    _vertPath = strdup(vertName.c_str());
+    _fragPath = strdup(fragName.c_str());
+
+    _fromExtractor = true;
+}
+
+void Shader::LoadShaderFromExtractor(std::string vertName, std::string geomName, std::string fragName)
+{
+    std::string vertexCode = ShadersExtractor::GetShaderContent(vertName);
+    std::string geometryCode = ShadersExtractor::GetShaderContent(geomName);
+    std::string fragmentCode = ShadersExtractor::GetShaderContent(fragName);
+
+    const char* vShaderCode = vertexCode.c_str();
+    const char* gShaderCode = geometryCode.c_str();
+    const char* fShaderCode = fragmentCode.c_str();
+
+    unsigned int vertex, geometry, fragment;
+    int success;
+    char infoLog[512];
+
+    // Vertex Shader  
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vShaderCode, NULL);
+    glCompileShader(vertex);
+
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(vertex);
+        return;
+    };
+
+    // Geometry Shader  
+    geometry = glCreateShader(GL_GEOMETRY_SHADER);
+    glShaderSource(geometry, 1, &gShaderCode, NULL);
+    glCompileShader(geometry);
+
+    glGetShaderiv(geometry, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(geometry, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(geometry);
+        return;
+    };
+
+
+    // Fragment Shader  
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fShaderCode, NULL);
+    glCompileShader(fragment);
+
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", infoLog);
+        glDeleteShader(fragment);
+        return;
+    };
+
+    // Program Object  
+    _programId = glCreateProgram();
+    glAttachShader(_programId, vertex);
+    glAttachShader(_programId, geometry);
+    glAttachShader(_programId, fragment);
+    glLinkProgram(_programId);
+
+    glGetProgramiv(_programId, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        glGetProgramInfoLog(_programId, 512, NULL, infoLog);
+        spdlog::error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{}", infoLog);
+        glDeleteProgram(_programId);
+        _programId = 0;
+        return;
+    }
+
+    glDeleteShader(vertex);
+    glDeleteShader(geometry);
+    glDeleteShader(fragment);
+
+    _init = true;
+
+    _vertPath = strdup(vertName.c_str());
+    _geomPath = strdup(vertName.c_str());
+    _fragPath = strdup(fragName.c_str());
+
+    _fromExtractor = true;
+    _hasGeom = true;
+}
+
 Shader::Shader()
 {
     _programId = 0;
     _vertPath = "";
+    _geomPath = "";
     _fragPath = "";
+    _hasGeom = false;
+    _fromExtractor = false;
     _init = false;
 }
 
-Shader::Shader(const Shader&& shader)
+Shader::Shader(const Shader&& shader) noexcept
 {
     _programId = shader._programId;
     _vertPath = shader._vertPath;
+    _geomPath = shader._geomPath;
     _fragPath = shader._fragPath;
+    _hasGeom = shader._hasGeom;
+    _fromExtractor = shader._fromExtractor;
     _init = shader._init;
 }
 
@@ -109,7 +387,10 @@ Shader::Shader(const Shader& shader)
 {
     _programId = shader._programId;
     _vertPath = shader._vertPath;
+    _geomPath = shader._geomPath;
     _fragPath = shader._fragPath;
+    _hasGeom = shader._hasGeom;
+    _fromExtractor = shader._fromExtractor;
     _init = shader._init;
 }
 
@@ -118,12 +399,61 @@ Shader::Shader(const GLchar* vertPath, const GLchar* fragPath)
     LoadShaderFromFile(vertPath, fragPath);
 }
 
+Shader::Shader(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath)
+{
+    LoadShaderFromFile(vertPath, geomPath, fragPath);
+}
+
 Shader::Shader(GLuint programId, const GLchar* vertPath, const GLchar* fragPath)
 {
     _programId = programId;
     _vertPath = vertPath;
     _fragPath = fragPath;
+    _geomPath = "";
+    _hasGeom = false;
+    _fromExtractor = false;
     _init = true;
+}
+
+Shader::Shader(GLuint programId, const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath)
+{
+    _programId = programId;
+    _vertPath = vertPath;
+    _geomPath = geomPath;
+    _fragPath = fragPath;
+    _hasGeom = true;
+    _fromExtractor = false;
+    _init = true;
+}
+
+Shader* Shader::FromExtractor(std::string vertName, std::string fragName)
+{
+    Shader* res = new Shader();
+
+    res->LoadShaderFromExtractor(vertName, fragName);
+
+    if (!res->IsInitialized()) {
+        spdlog::error("ERROR::SHADER::CREATE::CREATION_FROM_EXTRACTOR_FAILED");
+        delete res;
+        return nullptr;
+    }
+
+    return res;
+}
+
+Shader* Shader::FromExtractor(std::string vertName, std::string geomName, std::string fragName)
+{
+    Shader* res = new Shader();
+
+    res->LoadShaderFromExtractor(vertName, geomName, fragName);
+
+    if (!res->IsInitialized()) {
+        spdlog::error("ERROR::SHADER::CREATE::CREATION_FROM_EXTRACTOR_FAILED");
+        delete res;
+        return nullptr;
+    }
+
+    return res;
 }
 
 Shader::~Shader()
@@ -140,12 +470,19 @@ void Shader::Relode()
 {
     unsigned int temp = _programId;
     _init = false;
-    LoadShaderFromFile(_vertPath, _fragPath);
+
+    if (_hasGeom) {
+        LoadShaderFromFile(_vertPath, _geomPath, _fragPath);
+    }
+    else {
+        LoadShaderFromFile(_vertPath, _fragPath);
+    }
 
     if (_init) {
         glDeleteProgram(temp);
     }
     else {
+        spdlog::error("ERROR::SHADER::RELOAD::RELOADING_FAILED");
         _programId = temp;
         _init = true;
     }

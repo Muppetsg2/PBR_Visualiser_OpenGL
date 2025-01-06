@@ -4,28 +4,23 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.2.0
+// Version: 1.3.0
 // Author: Marceli Antosik
-// Last Update: 02.01.2025
-
-#if !CONSOLE_ENABLED
-
-#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-
-#endif
+// Last Update: 07.01.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
     _declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 
-#include <TimeManager.h>
 #include <Texture2D.h>
 #include <Shader.h>
 #include <Skybox.h>
 #include <Camera.h>
+#include <ShadersExtractor.h>
 
-#if _DEBUG
+#if WINDOW_APP
+#include <TimeManager.h>
 #include <Shape.h>
 #endif
 
@@ -72,11 +67,12 @@ static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 #endif
 
 bool init();
+void drawBanner();
 void render();
 GLuint LoadDefaultWhiteTexture();
 GLuint LoadDefaultBlackTexture();
 
-#if !_DEBUG
+#if !WINDOW_APP
 ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
 
 ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
@@ -116,7 +112,7 @@ void imgui_end();
 #endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
-#if _DEBUG
+#if WINDOW_APP
 constexpr int32_t WINDOW_WIDTH = 1920;
 constexpr int32_t WINDOW_HEIGHT = 1080;
 #else
@@ -144,7 +140,7 @@ float height_scale = 0.04f;
 float exposure = 1.f;
 float colorIntensity = 1.f;
 
-#if !_DEBUG
+#if !WINDOW_APP
 std::vector<std::string> skyboxPaths =
 {
     "/res/skybox/rooitou_park_4k.hdr",
@@ -170,7 +166,7 @@ unsigned int quadIndi[6] = {
 };
 #endif
 
-#if _DEBUG
+#if WINDOW_APP
 bool openFileDialogs[6] = { false, false, false, false, false, false };
 ImFileDialogInfo fileDialogInfos[6];
 
@@ -187,24 +183,11 @@ int main(int argc, char** argv)
 {
     exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
 
-    spdlog::set_pattern("%v");
+    ShadersExtractor::Init(exeDirPath + "\\shaders.dat");
 
-    spdlog::info("     ___  ___  ___    _   ___               ___              ");
-    spdlog::info("    / _ \\/ _ )/ _ \\  | | / (_)__ __ _____ _/ (_)__ ___ ____");
-    spdlog::info("   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/  ");
-    spdlog::info("  /_/  /____/_/|_|   |___/_/___/\\_,_/\\_,_/_/_/___/\\__/_/  \n");
-    spdlog::info("                       Version: {}", PBR_VISUALISER_VERSION_STR);
-    spdlog::info("                   Author: Marceli Antosik");
-    spdlog::info("                   Last Update: {}", PBR_VISUALISER_LAST_UPDATE);
-
-#if _DEBUG
-    spdlog::info("                    Configuration: DEBUG\n");
+#if WINDOW_APP
+    drawBanner();
 #else
-    spdlog::info("                   Configuration: RELEASE\n");
-
-    // Default spdlog pattern
-    // [2014-10-31 23:46:59.678] [my_loggername] [info] Some message
-    spdlog::set_pattern("%+");
 
     std::string fileName;
     std::string saveDir;
@@ -284,6 +267,9 @@ int main(int argc, char** argv)
             else if (arg == "-i") {
                 expectIntensity = true;
             }
+            else if (arg == "-v") {
+                Config::setVerbose(true);
+            }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
             }
@@ -355,6 +341,7 @@ int main(int argc, char** argv)
         }
     }
 #endif
+
     spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
 
     if (!init())
@@ -362,9 +349,10 @@ int main(int argc, char** argv)
         spdlog::error("Failed to initialize project!");
         return EXIT_FAILURE;
     }
-    spdlog::info("Initialized project.");
 
-#if _DEBUG
+    if (Config::isVerbose()) spdlog::info("Initialized project.");
+
+#if WINDOW_APP
     init_imgui();
     spdlog::info("Initialized ImGui.");
 
@@ -373,12 +361,13 @@ int main(int argc, char** argv)
     Camera::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT));
 #endif
 
-#if _DEBUG
-    Skybox::Init(window, exeDirPath, "./res/skybox/rooitou_park_4k.hdr");
+#if WINDOW_APP
+    Skybox::Init(window, /*exeDirPath,*/ "./res/skybox/rooitou_park_4k.hdr");
 #else
+
     spdlog::info("Skybox: {}", to_string(sky));
 
-    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), exeDirPath, std::string(exeDirPath + skyboxPaths[(uint8_t)(sky != SkyboxEnum::DEFAULT ? sky : SkyboxEnum::PARK)]).c_str());
+    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), /*exeDirPath,*/ std::string(exeDirPath + skyboxPaths[(uint8_t)(sky != SkyboxEnum::DEFAULT ? sky : SkyboxEnum::PARK)]).c_str());
 
     for (size_t i = 0; i < imgPaths.size(); ++i) {
         TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
@@ -397,7 +386,7 @@ int main(int argc, char** argv)
 
     glGenVertexArrays(1, &quadVAO);
 
-#if _DEBUG
+#if WINDOW_APP
     set_shape(quadVAO, shapeType);
     set_plane_normal_orientation(planeNormalOrientation);
 #else
@@ -422,13 +411,15 @@ int main(int argc, char** argv)
     glBindVertexArray(0);
 #endif
 
-#if _DEBUG
-    PBR = new Shader("./res/shader/basic.vert", "./res/shader/basic.frag");
+#if WINDOW_APP
+    //PBR = new Shader(std::string(exeDirPath + "/res/shader/basic.vert").c_str(), std::string(exeDirPath + "/res/shader/basic.frag").c_str());
+    PBR = Shader::FromExtractor("basic.vert", "basic.frag");
 #else
-    PBR = new Shader(std::string(exeDirPath + "/res/shader/basic2.vert").c_str(), std::string(exeDirPath + "/res/shader/basic2.frag").c_str());
+    //PBR = new Shader(std::string(exeDirPath + "/res/shader/basic2.vert").c_str(), std::string(exeDirPath + "/res/shader/basic2.frag").c_str());
+    PBR = Shader::FromExtractor("basic2.vert", "basic2.frag");
 #endif
 
-#if _DEBUG
+#if WINDOW_APP
     Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
     Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
@@ -478,17 +469,25 @@ int main(int argc, char** argv)
     }
 
     spdlog::info("Position: {}", to_string(position));
+    spdlog::info("Exposure: {}", exposure);
+    spdlog::info("Color Intensity: {}", colorIntensity);
+
 #endif
 
-#if _DEBUG
+#if WINDOW_APP
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
         // Process I/O operations here
         input();
 
+        Camera::StartCapturing();
         // OpenGL rendering code here
         render();
+        Camera::StopCapturing();
+
+        Camera::Render();
 
         // Draw ImGui
         imgui_begin();
@@ -511,10 +510,10 @@ int main(int argc, char** argv)
     glGenTextures(1, &resTex);
     glBindTexture(GL_TEXTURE_2D, resTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resTex, 0);
@@ -563,7 +562,7 @@ int main(int argc, char** argv)
 
     glDeleteVertexArrays(1, &quadVAO);
 
-#if _DEBUG
+#if WINDOW_APP
     Shape::Deinit();
 #else
     glDeleteBuffers(1, &quadVBO);
@@ -574,6 +573,8 @@ int main(int argc, char** argv)
     PBR = nullptr;
     Skybox::Deinit();
 
+    Camera::Deinit();
+
     for (int i = 0; i < 6; ++i) 
     {
         delete imageTextures[i];
@@ -583,7 +584,9 @@ int main(int argc, char** argv)
     glDeleteTextures(1, &defaultWhiteTexture);
     glDeleteTextures(1, &defaultBlackTexture);
 
-#if _DEBUG
+    ShadersExtractor::Deinit();
+
+#if WINDOW_APP
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -608,7 +611,8 @@ bool init()
         spdlog::error("Failed to initalize GLFW!");
         return false;
     }
-    spdlog::info("Successfully initialized GLFW!");
+    
+    if (Config::isVerbose()) spdlog::info("Successfully initialized GLFW!");
 
     // GL 4.5 + GLSL 450
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_MAJOR);
@@ -616,7 +620,7 @@ bool init()
     glfwWindowHint(GLFW_OPENGL_PROFILE,        GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 
-#if !_DEBUG
+#if !WINDOW_APP
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 #endif
     // Create window with graphics context
@@ -626,7 +630,8 @@ bool init()
         spdlog::error("Failed to create GLFW Window!");
         return false;
     }
-    spdlog::info("Successfully created GLFW Window!");
+
+    if (Config::isVerbose()) spdlog::info("Successfully created GLFW Window!");
 
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
@@ -641,7 +646,8 @@ bool init()
         spdlog::error("Failed to initialize OpenGL loader!");
         return false;
     }
-    spdlog::info("Successfully initialized OpenGL loader!");
+
+    if (Config::isVerbose()) spdlog::info("Successfully initialized OpenGL loader!");
 
 #if _DEBUG
     // Debugging
@@ -649,8 +655,10 @@ bool init()
     glDebugMessageCallback(ErrorMessageCallback, 0);
 #endif
 
-    const GLubyte* renderer = glGetString(GL_RENDERER);
-    spdlog::info("Graphic Card: {0}", (char*)renderer);
+    if (Config::isVerbose()) {
+        const GLubyte* renderer = glGetString(GL_RENDERER);
+        spdlog::info("Graphic Card: {0}", (char*)renderer);
+    }
 
     // Depth Test
     glEnable(GL_DEPTH_TEST);
@@ -668,6 +676,33 @@ bool init()
     defaultBlackTexture = LoadDefaultBlackTexture();
 
     return true;
+}
+
+void drawBanner()
+{
+    spdlog::set_pattern("%v");
+
+    spdlog::info("     ___  ___  ___    _   ___               ___              ");
+    spdlog::info("    / _ \\/ _ )/ _ \\  | | / (_)__ __ _____ _/ (_)__ ___ ____");
+    spdlog::info("   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/  ");
+    spdlog::info("  /_/  /____/_/|_|   |___/_/___/\\_,_/\\_,_/_/_/___/\\__/_/  \n");
+    spdlog::info("                       Version: {}", PBR_VISUALISER_VERSION_STR);
+    spdlog::info("                   Author: Marceli Antosik");
+    spdlog::info("                   Last Update: {}", PBR_VISUALISER_LAST_UPDATE);
+
+#if WINDOW_APP && !_DEBUG
+    spdlog::info("                    Configuration: WINDOW\n");
+#elif WINDOW_APP && _DEBUG
+    spdlog::info("                  Configuration: WINDOW DEBUG\n");
+#elif !WINDOW_APP && !_DEBUG
+    spdlog::info("                    Configuration: CONSOLE\n");
+#elif !WINDOW_APP && _DEBUG
+    spdlog::info("                  Configuration: CONSOLE DEBUG\n");
+#endif
+
+    // Default spdlog pattern
+    // [2014-10-31 23:46:59.678] [my_loggername] [info] Some message
+    spdlog::set_pattern("%+");
 }
 
 void render()
@@ -712,7 +747,7 @@ void render()
     PBR->SetInt("brdfLUT", 8);
 
     glBindVertexArray(quadVAO);
-#if !_DEBUG
+#if !WINDOW_APP
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)quadIndi);
 #else
     switch (shapeType) {
@@ -776,14 +811,18 @@ GLuint LoadDefaultBlackTexture()
     return textureID;
 }
 
-#if !_DEBUG
+#if !WINDOW_APP
 void printHelp() {
+
+    drawBanner();
+
     spdlog::set_pattern("%v");
 
     spdlog::info("Usage:");
-    spdlog::info("  PBR_Visualiser.exe [-h] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>]");
+    spdlog::info("  PBR_Visualiser.exe ([-h] | [-v] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>])");
     spdlog::info("Options:");
     spdlog::info("  -h                   Display this help message and exit.");
+    spdlog::info("  -v                   Throws more detailed information as output to the console");
     spdlog::info("  -f <image_path>      Specify up to 6 image paths to process. Additional paths will be ignored.");
     spdlog::info("                       The paths must be in the order: albedo, normal, metallness, displacement, roughness, ambient occlusion.");
     spdlog::info("                       Example: program -f albedo_image.jpg normal_image.png metalness_image.png");
@@ -812,7 +851,7 @@ void processFileArguments(int& i, int argc, char** argv, std::vector<std::string
         // Check if the next argument is a new flag (starts with '-')
         if (arg[0] == '-') {
             --i;  // Step back to re-process this as the next option
-            break;
+            return;
         }
 
         imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
@@ -1056,22 +1095,27 @@ glm::mat4 get_plane_normal_orientation_mat(glm::mat4 planeTrans, PlaneNormalOrie
 {
     switch (orientation) {
         case PlaneNormalOrientation::TOP: {
+            planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
             break;
         }
         case PlaneNormalOrientation::BOTTOM: {
             planeTrans = glm::rotate(planeTrans, glm::radians(180.f), glm::vec3(0.f, 0.f, 1.f));
+            planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
             break;
         }
         case PlaneNormalOrientation::FRONT: {
             planeTrans = glm::rotate(planeTrans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+            planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
             break;
         }
         case PlaneNormalOrientation::BACK: {
             planeTrans = glm::rotate(planeTrans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+            planeTrans = glm::rotate(planeTrans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
             break;
         }
         case PlaneNormalOrientation::RIGHT: {
             planeTrans = glm::rotate(planeTrans, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
+            planeTrans = glm::rotate(planeTrans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
             break;
         }
         case PlaneNormalOrientation::LEFT: {
@@ -1246,6 +1290,32 @@ void imgui_render()
         }
 
         ImGui::EndMenuBar();
+    }
+
+    if (ImGui::Button("Save Screenshot")) {
+
+        std::string screenFolderPath = std::string(exeDirPath).append("\\").append("Screenshots");
+
+        bool exist = false;
+        struct stat info;
+        if (stat(screenFolderPath.c_str(), &info) != 0) {
+            exist = false;  // Folder nie istnieje
+        }
+        else if (info.st_mode & S_IFDIR) {
+            exist = true;   // Istnieje i jest folderem
+        }
+
+        if (_mkdir(screenFolderPath.c_str()) == 0) {
+            spdlog::info("Directory '{}' has been created!", screenFolderPath);
+            exist = true;
+        }
+        else {
+            spdlog::error("Directory '{}' couldn't have been created!", screenFolderPath);
+            exist = false;
+        }
+
+        if (exist) Camera::SaveScreenshot(screenFolderPath);
+        else spdlog::error("Failed to save screenshot!");
     }
 
     if (ImGui::BeginCombo("Shape", to_string(shapeType).c_str()))

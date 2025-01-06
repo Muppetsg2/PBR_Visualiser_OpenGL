@@ -33,7 +33,7 @@ CPMAddPackage(
 )
 CPMAddPackage("gh:gabime/spdlog@1.15.0")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(WINDOW_APP)
     CPMAddPackage("gh:ocornut/imgui@1.91.6-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
@@ -54,6 +54,6 @@ set_target_properties(glad
                       gli
                       spdlog PROPERTIES FOLDER "thirdparty")
 
-if (TARGET zlibstatic)
+if(TARGET zlibstatic)
     set_target_properties(zlibstatic PROPERTIES FOLDER "thirdparty")
 endif()

@@ -2,7 +2,7 @@
 
 out vec2 TexCoords;
 
-void main(void) 
+void main() 
 {
     float x = float((gl_VertexID & 1) << 2);
     float y = float((gl_VertexID & 2) << 1);

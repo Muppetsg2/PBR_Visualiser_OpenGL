@@ -1,9 +1,19 @@
 #pragma once
-#include <glm/fwd.hpp>
+#include <Shader.h>
 
 class Camera {
 private:
 	static GLuint _uboMatrices;
+
+#if WINDOW_APP
+	static GLuint _fbo;
+	static GLuint _rbo;
+	static GLuint _renderTexture;
+
+	static GLuint _vao;
+
+	static Shader* _renderShader;
+#endif
 
 	static bool _init;
 	static bool _recalculate;
@@ -23,12 +33,25 @@ private:
 	static void SetFrontDir(glm::vec3 dir);
 	static void OnTransformChange();
 
+#if WINDOW_APP
+	static bool InitFramebuffer();
+#endif
+
 	static GLFWwindow* _window;
 	static glm::ivec2 _windowSize;
 
 public:
 	static void Init(glm::ivec2 window_size);
 	static void Init(GLFWwindow* window);
+	static void Deinit();
+
+#if WINDOW_APP
+	static void Render();
+	static void SaveScreenshot(std::string path);
+
+	static void StartCapturing();
+	static void StopCapturing();
+#endif
 
 	static void UpdateFrontDir();
 	static void OnWindowSizeChange();

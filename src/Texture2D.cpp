@@ -69,7 +69,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		stbi_image_free(image);
 	}
 
-	spdlog::info("Texture at path '{}' loaded!", path);
+	if (Config::isVerbose()) spdlog::info("Texture at path '{}' loaded!", path);
 }
 
 Texture2D::Texture2D()

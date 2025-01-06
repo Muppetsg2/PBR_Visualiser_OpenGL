@@ -1,5 +1,4 @@
 #include <TimeManager.h>
-#include <GLFW/glfw3.h>
 
 float TimeManager::_updateDeltaTime = 0.f;
 float TimeManager::_timeMultiplier = 1.0f;

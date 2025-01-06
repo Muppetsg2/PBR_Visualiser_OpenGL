@@ -4,19 +4,35 @@ class Shader
 {
 private:
     GLuint _programId;
+
+    // Paths
     const GLchar* _vertPath;
+    const GLchar* _geomPath;
     const GLchar* _fragPath;
+
+    // Flags
+    bool _hasGeom = false;
+    bool _fromExtractor = false;
     bool _init = false;
 
     void LoadShaderFromFile(const GLchar* vertPath, const GLchar* fragPath);
+    void LoadShaderFromFile(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
+
+    void LoadShaderFromExtractor(std::string vertName, std::string fragName);
+    void LoadShaderFromExtractor(std::string vertName, std::string geomName, std::string fragName);
 
 public:
 
     Shader();
-    Shader(const Shader&& shader);
+    Shader(const Shader&& shader) noexcept;
     Shader(const Shader& shader);
     Shader(const GLchar* vertPath, const GLchar* fragPath);
+    Shader(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
     Shader(GLuint programId, const GLchar* vertPath, const GLchar* fragPath);
+    Shader(GLuint programId, const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
+
+    static Shader* FromExtractor(std::string vertName, std::string fragName);
+    static Shader* FromExtractor(std::string vertName, std::string geomName, std::string fragName);
 
     virtual ~Shader();
 

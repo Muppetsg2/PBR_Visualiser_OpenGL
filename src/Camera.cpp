@@ -2,6 +2,16 @@
 
 GLuint Camera::_uboMatrices = 0;
 
+#if WINDOW_APP
+GLuint Camera::_fbo = 0;
+GLuint Camera::_rbo = 0;
+GLuint Camera::_renderTexture = 0;
+
+GLuint Camera::_vao = 0;
+
+Shader* Camera::_renderShader = nullptr;
+#endif
+
 bool Camera::_init = false;
 bool Camera::_recalculate = false;
 
@@ -38,8 +48,58 @@ void Camera::OnTransformChange()
 	UpdateFrontDir();
 }
 
+#if WINDOW_APP
+bool Camera::InitFramebuffer()
+{
+	glGenFramebuffers(1, &Camera::_fbo);
+	glGenRenderbuffers(1, &Camera::_rbo);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, Camera::_rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Camera::_windowSize.x, Camera::_windowSize.y);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, Camera::_rbo);
+
+	glGenTextures(1, &Camera::_renderTexture);
+	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Camera::_renderTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		spdlog::error("An error occurred while creating the framebuffer");
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDeleteTextures(1, &Camera::_renderTexture);
+		glDeleteRenderbuffers(1, &Camera::_rbo);
+		glDeleteFramebuffers(1, &Camera::_fbo);
+
+		Camera::_renderTexture = 0;
+		Camera::_rbo = 0;
+		Camera::_fbo = 0;
+
+		return false;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glGenVertexArrays(1, &Camera::_vao);
+
+	return true;
+}
+#endif
+
 void Camera::Init(glm::ivec2 window_size)
 {
+	if (Camera::_init) {
+		spdlog::info("Camera already initialized!");
+		return;
+	}
+
 	Camera::_windowSize = window_size;
 	Camera::_recalculate = true;
 
@@ -58,12 +118,33 @@ void Camera::Init(glm::ivec2 window_size)
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(Camera::GetViewMatrix()));
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+#if WINDOW_APP
+	bool res = Camera::InitFramebuffer();
+
+	if (!res) {
+		spdlog::error("The camera could not be initialized!");
+		Camera::_recalculate = false;
+		glDeleteBuffers(1, &Camera::_uboMatrices);
+		Camera::_uboMatrices = 0;
+		Camera::_windowSize = glm::ivec2();
+		Camera::_window = nullptr;
+		return;
+	}
+
+	_renderShader = Shader::FromExtractor("screen.vert", "screen.frag");
+#endif
+
 	Camera::_recalculate = false;
 	Camera::_init = true;
 }
 
 void Camera::Init(GLFWwindow* window)
 {
+	if (Camera::_init) {
+		spdlog::info("Camera already initialized!");
+		return;
+	}
+
 	if (window == nullptr) {
 		spdlog::error("Failed to initialize Camera. Window was nullptr!");
 		return;
@@ -76,6 +157,94 @@ void Camera::Init(GLFWwindow* window)
 
 	Camera::Init(s);
 }
+
+void Camera::Deinit()
+{
+	glDeleteBuffers(1, &Camera::_uboMatrices);
+	Camera::_uboMatrices = 0;
+	Camera::_windowSize = glm::ivec2();
+	Camera::_window = nullptr;
+
+#if WINDOW_APP
+	glDeleteTextures(1, &Camera::_renderTexture);
+	glDeleteRenderbuffers(1, &Camera::_rbo);
+	glDeleteFramebuffers(1, &Camera::_fbo);
+
+	Camera::_renderTexture = 0;
+	Camera::_rbo = 0;
+	Camera::_fbo = 0;
+
+	glDeleteVertexArrays(1, &Camera::_vao);
+	Camera::_vao = 0;
+
+	delete _renderShader;
+	_renderShader = nullptr;
+#endif
+}
+
+#if WINDOW_APP
+void Camera::Render()
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.f, 0.f, 0.f, 1.f);
+
+	Camera::_renderShader->Use();
+	glActiveTexture(GL_TEXTURE0 + 10);
+	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
+	Camera::_renderShader->SetInt("screenTexture", 10);
+
+	glBindVertexArray(Camera::_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glBindVertexArray(0);
+}
+
+void Camera::SaveScreenshot(std::string path)
+{
+	// Save Image
+	int width, height;
+	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+	unsigned char* data = new unsigned char[width * height * 3]; // GL_RGB
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+	auto now = std::chrono::system_clock::now();
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+	std::stringstream ss;
+	ss << std::put_time(std::localtime(&in_time_t), "%Y%m%d%H%M%S");
+	std::string date = ss.str();
+
+	stbi_flip_vertically_on_write(true);
+	std::string name = std::format("Screenshot{}.png", date);
+	int result = stbi_write_png(std::filesystem::path(std::string(path).append("\\").append(name)).string().c_str(), width, height, 3, data, 0);
+
+	if (result != 0) {
+		spdlog::info("Screenshot '{}' saved in directory '{}'", name, path);
+	}
+	else {
+		spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, path);
+	}
+
+	delete[] data;
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Camera::StartCapturing()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+	glViewport(0, 0, Camera::_windowSize.x, Camera::_windowSize.y);
+}
+
+void Camera::StopCapturing()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+#endif
 
 void Camera::UpdateFrontDir()
 {

@@ -1,7 +1,25 @@
 ﻿{
   "configurations": [
     {
-      "name": "x64-Debug",
+      "name": "x64-Window",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "WINDOW_APP",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "x64-Window-Debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
@@ -10,46 +28,28 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-	    "variables": [
+      "variables": [
         {
-          "name": "CONSOLE_ENABLED",
+          "name": "WINDOW_APP",
           "value": "True",
           "type": "BOOL"
         }
       ]
     },
     {
-      "name": "x64-Release",
+      "name": "x64-Console",
       "generator": "Ninja",
       "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-	    "variables": [
+      "variables": [
         {
-          "name": "CONSOLE_ENABLED",
+          "name": "WINDOW_APP",
           "value": "False",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x64-Release-Console",
-      "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-	    "variables": [
-        {
-          "name": "CONSOLE_ENABLED",
-          "value": "True",
           "type": "BOOL"
         }
       ]
