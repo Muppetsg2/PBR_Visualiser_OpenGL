@@ -4,12 +4,21 @@
 #define PBR_VISUALISER_VER_MINOR 3
 #define PBR_VISUALISER_VER_PATCH 0
 
-#define PBR_VISUALISER_LAST_UPDATE "07.01.2025"
+#define PBR_VISUALISER_LAST_UPDATE "15.01.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
 #define PBR_VISUALISER_VERSION_INT PBR_VISUALISER_TO_INT_VERSION(PBR_VISUALISER_VER_MAJOR, PBR_VISUALISER_VER_MINOR, PBR_VISUALISER_VER_PATCH)
 #define PBR_VISUALISER_VERSION_STR PBR_VISUALISER_TO_STRING_VERSION(PBR_VISUALISER_VER_MAJOR, PBR_VISUALISER_VER_MINOR, PBR_VISUALISER_VER_PATCH)
+
+
+//   __________  ___  ____ 
+//  /_  __/ __ \/ _ \/ __ \
+//   / / / /_/ / // / /_/ /
+//  /_/  \____/____/\____/ 
+//        
+//        
+// NOTHING
 
 
 //    _______                      __         
@@ -29,6 +38,23 @@
 // - updated the Skybox class to remove the variable shadersPath
 // - added screenshot saving to Window build configurations
 // - added screen shaders for camera plane rendering
+// - fixed bug in Texture2D constructor
+// - added deinitialization of Shape class at the end of program in console build
+// - the full-screen texture drawing method was used using one triangle. This made it possible to avoid creating additional VBO and EBO
+// - added validation of the submitted file name in console build
+// - added Interactive mode in console build
+// - added button to reset maps to initial state in window build
+// - added cgltf library to window build
+// - added tinyObjLoader library to window build
+// - added button to load own 3d object file to visualiser in window build. Supported formats: .glb, .gltf, .obj. (.glb, .gltf and .obj must contain meshes composed of triangles and at least information about Position, Normal, TexCoords)
+// - added information about model filename in window build
+// - added two models (watch and lamp) in 3 formats (.obj, .glb and .glft + .bin)
+// - fixed bug when loading GLTF object with more than one primitive or shape
+// - added information about skybox file/folder name in window build
+// - updated ImGui to 1.91.7-docking version
+// - optimized rendering in console mode by not drawing skybox
+// - added 3 diffrent display modes for skybox in window build
+// - added option to change displayed mipmap level for skybox in window build
 //
 // --- 1.2.0 ---
 // - added exposure and colorIntensity in Skybox and PBR shader

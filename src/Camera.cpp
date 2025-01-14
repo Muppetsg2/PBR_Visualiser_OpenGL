@@ -186,7 +186,7 @@ void Camera::Deinit()
 void Camera::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.f, 0.f, 0.f, 1.f);
+	//glClearColor(0.f, 0.f, 0.f, 1.f);
 
 	Camera::_renderShader->Use();
 	glActiveTexture(GL_TEXTURE0 + 10);
@@ -263,6 +263,23 @@ void Camera::OnWindowSizeChange()
 		glBindBuffer(GL_UNIFORM_BUFFER, Camera::_uboMatrices);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(Camera::GetProjectionMatrix()));
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+#if WINDOW_APP
+		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+		glBindRenderbuffer(GL_RENDERBUFFER, Camera::_rbo);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Camera::_windowSize.x, Camera::_windowSize.y);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, Camera::_rbo);
+
+		glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Camera::_renderTexture, 0);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#endif
 	}
 }
 
@@ -317,7 +334,10 @@ glm::mat4 Camera::GetProjectionMatrix()
 
 	glm::ivec2 size{};
 
-	if (Camera::_window != nullptr) glfwGetWindowSize(Camera::_window, &size.x, &size.y);
+	if (Camera::_window != nullptr) {
+		glfwGetWindowSize(Camera::_window, &size.x, &size.y);
+		Camera::_windowSize = size;
+	}
 	else size = Camera::_windowSize;
 
 	return glm::perspective(glm::radians(Camera::_fov), (size.y != 0) ? ((float)size.x / (float)size.y) : 0, Camera::_near, Camera::_far);

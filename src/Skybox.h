@@ -1,10 +1,16 @@
 #pragma once
 
 #include <Shader.h>
+#if WINDOW_APP
+#include <macros.h>
+#endif
+
+#if WINDOW_APP
+ENUM_CLASS_BASE_VALUE(SkyboxDisplay, uint8_t, DEFAULT, 0, IRRADIANCE, 1, PREFILTER, 2)
+#endif
 
 class Skybox {
 private:
-
     static GLuint _vao;
     static GLuint _texture;
     static Shader* _shader;
@@ -20,13 +26,15 @@ private:
     static float _colorIntensity;
 
 #if WINDOW_APP
+    static SkyboxDisplay _displayMode;
+    static float _mipmapLevel;
+    static float _MAX_MIPMAP_LEVEL_DEFAULT;
+    static bool _fromData;
     static bool _openImageDialogs[8];
     static ImFileDialogInfo _imageDialogInfos[8];
 #endif
 
     static std::string _paths[6];
-
-    //static std::string _resDir;
 
     static GLFWwindow* _window;
     static glm::ivec2 _windowSize;
@@ -34,21 +42,18 @@ private:
     Skybox() = default;
     virtual ~Skybox() = default;
 
-    static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer/*, std::string shaderDir*/);
+    static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer);
 
     static std::pair<bool, std::string> CheckFolder();
     static void SaveData(std::string dir);
     static bool LoadSavedData(std::string dir);
-
-#if WINDOW_APP
     static bool LoadSavedDataToChange(std::string dir, bool isDiffrent);
-#endif
 
 public:
-    static void Init(glm::ivec2 window_size, /*std::string exeDir,*/ const GLchar* faces[6]);
-    static void Init(GLFWwindow* window, /*std::string exeDir, */ const GLchar * faces[6]);
-    static void Init(glm::ivec2 window_size, /*std::string exeDir,*/ const GLchar* hdr);
-    static void Init(GLFWwindow* window, /*std::string exeDir,*/ const GLchar* hdr);
+    static void Init(glm::ivec2 window_size, const GLchar* faces[6]);
+    static void Init(GLFWwindow* window, const GLchar* faces[6]);
+    static void Init(glm::ivec2 window_size, const GLchar* hdr);
+    static void Init(GLFWwindow* window, const GLchar* hdr);
     static void Draw();
     static void Deinit();
 
@@ -60,12 +65,20 @@ public:
     static float GetExposure();
     static float GetColorIntensity();
 
+#if WINDOW_APP
+    static SkyboxDisplay GetSkyboxDisplay();
+    static float GetMipMapLevel();
+
+    static void SetSkyboxDisplay(SkyboxDisplay mode);
+    static void SetMipMapLevel(float value);
+#endif
+
     static void SetExposure(float value);
     static void SetColorIntensity(float value);
 
-#if WINDOW_APP
     static void ChangeTexture(const GLchar* hdr);
-    static void ChangeTexture(std::string faces[6]);
+#if WINDOW_APP
+    static void ChangeTexture(const GLchar* faces[6]);
     static void DrawEditor(bool* open);
     static void DrawSkyboxFacesLoader(bool* open);
 #endif

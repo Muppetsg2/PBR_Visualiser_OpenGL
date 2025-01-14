@@ -8,6 +8,7 @@
 #pragma once
 
 #include <filesystem>
+#include <vector>
 #include <imgui.h>
 
 typedef int ImGuiFileDialogType;	// -> enum ImGuiFileDialogType_        // Enum: A file dialog type

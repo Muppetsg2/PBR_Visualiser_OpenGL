@@ -5,3 +5,17 @@ PBR_Visualiser.exe -f .\res\textures\RoofingTiles013A_2K-PNG\RoofingTiles013A_2K
 PBR_Visualiser.exe -f .\res\textures\AcousticFoam003_2K-PNG\AcousticFoam003_2K-PNG_Color.png .\res\textures\AcousticFoam003_2K-PNG\AcousticFoam003_2K-PNG_NormalGL.png .\res\textures\AcousticFoam003_2K-PNG\AcousticFoam003_2K-PNG_Metalness.png .\res\textures\AcousticFoam003_2K-PNG\AcousticFoam003_2K-PNG_Displacement.png .\res\textures\AcousticFoam003_2K-PNG\AcousticFoam003_2K-PNG_Roughness.png
 
 PBR_Visualiser.exe -v -f .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Color.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_NormalGL.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Metalness.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Displacement.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Roughness.png
+
+PBR_Visualiser.exe -v -p right -f .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Color.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_NormalGL.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Metalness.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Displacement.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Roughness.png
+
+PBR_Visualiser.exe -v -p right -f .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Color.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_NormalGL.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Metalness.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Displacement.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Roughness.png -n Name -d .\res -s photostudio -r r1k -e 2.0 -i 1.0
+
+PBR_Visualiser.exe -v -p right -f .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Color.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_NormalGL.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Metalness.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Displacement.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Roughness.png -n Name -d .\res -s photostudio -r r1k -e 2.0 -i 1.0
+
+PBR_Visualiser.exe -v -p right -f .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Color.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_NormalGL.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Metalness2.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Displacement.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Roughness.png -n Name -d .\res -s photostudio -r r1k -e 2.0 -i 1.0
+
+PBR_Visualiser.exe -v -I -p right -f .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Color.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_NormalGL.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Metalness.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Displacement.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Roughness.png
+
+PBR_Visualiser.exe -v -I -p right -f .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Color.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_NormalGL.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Metalness.png .\res\textures\Rock051_2K-PNG\Rock051_2K-PNG_Displacement.png -n Hej
+
+PBR_Visualiser.exe -v -p right -f .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Color.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_NormalGL.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Metalness2.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Displacement.png .\res\textures\Metal049A_2K-PNG\Metal049A_2K-PNG_Roughness.png -n Name -d .\res -s photostudio -r r1k -e 2.0 -i 1.0 -I

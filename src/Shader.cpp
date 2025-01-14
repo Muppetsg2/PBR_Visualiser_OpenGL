@@ -471,11 +471,21 @@ void Shader::Relode()
     unsigned int temp = _programId;
     _init = false;
 
-    if (_hasGeom) {
-        LoadShaderFromFile(_vertPath, _geomPath, _fragPath);
+    if (_fromExtractor) {
+        if (_hasGeom) {
+            LoadShaderFromExtractor(_vertPath, _geomPath, _fragPath);
+        }
+        else {
+            LoadShaderFromExtractor(_vertPath, _fragPath);
+        }
     }
     else {
-        LoadShaderFromFile(_vertPath, _fragPath);
+        if (_hasGeom) {
+            LoadShaderFromFile(_vertPath, _geomPath, _fragPath);
+        }
+        else {
+            LoadShaderFromFile(_vertPath, _fragPath);
+        }
     }
 
     if (_init) {

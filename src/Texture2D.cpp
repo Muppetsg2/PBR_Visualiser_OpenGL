@@ -29,6 +29,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 {
 	stbi_set_flip_vertically_on_load(flip);
 	this->_hdr = (std::filesystem::path(std::string(path)).extension().string() == std::string(".hdr"));
+	bool err = false;
 
 	if (this->_hdr) {
 		float* image = stbi_loadf(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
@@ -45,6 +46,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		}
 		else {
 			spdlog::error("Failed to load texture: {}", path);
+			err = true;
 		}
 
 		stbi_image_free(image);
@@ -64,12 +66,15 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 		}
 		else {
 			spdlog::error("Failed to load texture: {}", path);
+			err = true;
 		}
 
 		stbi_image_free(image);
 	}
 
-	if (Config::isVerbose()) spdlog::info("Texture at path '{}' loaded!", path);
+	_init = !err;
+
+	if (Config::isVerbose() && !err) spdlog::info("Texture at path '{}' loaded!", path);
 }
 
 Texture2D::Texture2D()
@@ -77,6 +82,7 @@ Texture2D::Texture2D()
 	_id = 0;
 	_size = { 0, 0 };
 	_channelsNum = 0;
+	_init = false;
 
 	_path = "";
 	_hdr = false;
@@ -102,18 +108,26 @@ Texture2D::Texture2D(GLuint texId, glm::ivec2 size, int channelsNum, bool mipmap
 		case 1: {
 			_format = TextureFormat::RED;
 			_fileFormat = hdr ? TextureFileFormat::RED : TextureFileFormat::R32_FLOAT;
+			break;
 		}
 		case 2: {
 			_format = TextureFormat::RG;
 			_fileFormat = hdr ? TextureFileFormat::RG : TextureFileFormat::RG32_FLOAT;
+			break;
 		}
 		case 3: {
 			_format = TextureFormat::RGB;
 			_fileFormat = hdr ? TextureFileFormat::SRGB : TextureFileFormat::RGB32_FLOAT;
+			break;
 		}
 		case 4: {
 			_format = TextureFormat::RGBA;
 			_fileFormat = hdr ? TextureFileFormat::SRGBA : TextureFileFormat::RGBA32_FLOAT;
+			break;
+		}
+		default: {
+			_format = TextureFormat::RGB;
+			_fileFormat = hdr ? TextureFileFormat::SRGB : TextureFileFormat::RGB32_FLOAT;
 		}
 	}
 
@@ -127,6 +141,8 @@ Texture2D::Texture2D(GLuint texId, glm::ivec2 size, int channelsNum, bool mipmap
 		glGenerateTextureMipmap(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
+
+	_init = true;
 }
 
 Texture2D::Texture2D(const Texture2D&& texture) noexcept
@@ -134,6 +150,7 @@ Texture2D::Texture2D(const Texture2D&& texture) noexcept
 	_id = texture._id;
 	_size = texture._size;
 	_channelsNum = texture._channelsNum;
+	_init = texture._init;
 
 	_path = texture._path;
 	_hdr = texture._hdr;
@@ -151,6 +168,7 @@ Texture2D::Texture2D(const Texture2D& texture)
 	_id = texture._id;
 	_size = texture._size;
 	_channelsNum = texture._channelsNum;
+	_init = texture._init;
 
 	_path = texture._path;
 	_hdr = texture._hdr;
@@ -166,21 +184,27 @@ Texture2D::Texture2D(const Texture2D& texture)
 Texture2D::Texture2D(const GLchar* path, bool flip)
 {
 	LoadTextureFromFile(path, TextureFileFormat::SRGB, TextureFormat::RGB, TextureWrapMode::MIRRORED_REPEAT, TextureWrapMode::MIRRORED_REPEAT, TextureFilterMode::NEAREST_MIPMAP_LINEAR, TextureFilterMode::LINEAR, flip, true);
+
+	if (_init == false) _hdr = false;
 }
 
 Texture2D::Texture2D(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, bool flip)
 {
 	LoadTextureFromFile(path, fileFormat, format, TextureWrapMode::MIRRORED_REPEAT, TextureWrapMode::MIRRORED_REPEAT, TextureFilterMode::NEAREST_MIPMAP_LINEAR, TextureFilterMode::LINEAR, flip, false);
+
+	if (_init == false) _hdr = false;
 }
 
 Texture2D::Texture2D(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip)
 {
 	LoadTextureFromFile(path, fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, flip, false);
+
+	if (_init == false) _hdr = false;
 }
 
 Texture2D::~Texture2D()
 {
-	glDeleteTextures(1, &_id);
+	if (_init) glDeleteTextures(1, &_id);
 }
 
 void Texture2D::SetWrapModeS(const TextureWrapMode& mode)
@@ -213,6 +237,11 @@ void Texture2D::SetMagFilterMode(const TextureFilterMode& mode)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)mode);
 	_magFilterMode = mode;
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+bool Texture2D::IsInit() const
+{
+	return _init;
 }
 
 GLuint Texture2D::GetId() const

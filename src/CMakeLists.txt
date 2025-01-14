@@ -15,8 +15,8 @@ file(GLOB_RECURSE HEADER_FILES
 	 *.hpp)
 	 
 if (NOT WINDOW_APP)
-	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.cpp).*")
-	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.h).*")
+	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.cpp|ModelLoader\.cpp).*")
+	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.h|ModelLoader\.h).*")
 endif()
 
 # Search for the assets files
@@ -59,20 +59,24 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC glad
-												stb_image
-												stb_image_write
-												glfw
-												gli
-												spdlog
-												glm::glm)
+											 stb_image
+											 stb_image_write
+											 glfw
+											 gli
+											 spdlog
+											 glm::glm)
 
 if(WINDOW_APP)
-	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
-	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR})
+	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR}
+													   ${cgltf_SOURCE_DIR}
+													   ${tiny_obj_loader_SOURCE_DIR})
+	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui
+												  cgltf
+												  tiny_obj_loader)
 endif()
 
 # Shader Packing
-file(GLOB SHADER_FILES "${CMAKE_SOURCE_DIR}/res/shader/*")
+file(GLOB SHADER_FILES ${CMAKE_SOURCE_DIR}/res/shader/*)
 
 if (WINDOW_APP)
 	list(FILTER SHADER_FILES EXCLUDE REGEX ".*(basic2\.vert|basic2\.frag).*")

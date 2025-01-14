@@ -1,4 +1,4 @@
-//
+﻿//
 //     ___  ___  ___    _   ___               ___            
 //    / _ \/ _ )/ _ \  | | / (_)__ __ _____ _/ (_)__ ___ ____
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
@@ -6,7 +6,7 @@
 //
 // Version: 1.3.0
 // Author: Marceli Antosik
-// Last Update: 07.01.2025
+// Last Update: 15.01.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -18,10 +18,11 @@ extern "C" {
 #include <Skybox.h>
 #include <Camera.h>
 #include <ShadersExtractor.h>
+#include <Shape.h>
 
 #if WINDOW_APP
 #include <TimeManager.h>
-#include <Shape.h>
+#include <ModelLoader.h>
 #endif
 
 #if _DEBUG
@@ -58,13 +59,13 @@ static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint i
         SPDLOG_WARN("GL CALLBACK: type = {0}, severity = {1}, message = {2}", typeS, severityS, message);
     }
 }
+#endif
 
 static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
     Camera::OnWindowSizeChange();
 }
-#endif
 
 bool init();
 void drawBanner();
@@ -72,27 +73,8 @@ void render();
 GLuint LoadDefaultWhiteTexture();
 GLuint LoadDefaultBlackTexture();
 
-#if !WINDOW_APP
-ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
-
-ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
-
-ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
-
-bool isExposureSet = false;
-bool isIntensitySet = false;
-
-void printHelp();
-void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
-void processSkyArgument(const std::string& arg, SkyboxEnum& sky);
-void processNameArgument(const std::string& arg, std::string& fileName);
-void processDirectoryArgument(const std::string& arg, std::string& direc);
-void processPositionArgument(const std::string& arg, RenderPosition& position);
-void processResolutionArgument(const std::string& arg, RenderResolution& resolution);
-void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet);
-void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet);
-#else
-ENUM_CLASS_BASE_VALUE(ShapeType, uint8_t, Sphere, 0, Cube, 1, Plane, 2)
+#if WINDOW_APP
+ENUM_CLASS_BASE_VALUE(ShapeType, uint8_t, Sphere, 0, Cube, 1, Plane, 2, Loaded_Model, 3)
 
 ENUM_CLASS_BASE_VALUE(PlaneNormalOrientation, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5)
 
@@ -109,6 +91,49 @@ void init_imgui();
 void imgui_begin();
 void imgui_render();
 void imgui_end();
+#else
+ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
+
+ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
+
+ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
+
+bool isExposureSet = false;
+bool isIntensitySet = false;
+
+// ADDITIONAL FUNCTIONS
+bool isValidFileNameWindows(const std::string& name);
+
+// PROCESS ARGUMENTS
+void printHelp();
+void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths);
+void processSkyArgument(const std::string& arg, SkyboxEnum& sky);
+void processNameArgument(const std::string& arg, std::string& fileName);
+void processDirectoryArgument(const std::string& arg, std::string& direc);
+void processPositionArgument(const std::string& arg, RenderPosition& position);
+void processResolutionArgument(const std::string& arg, RenderResolution& resolution);
+void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet);
+void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet);
+
+// PROCESS INPUT (Interacive Mode Only)
+void processFileInput(std::vector<std::string>& imgPaths);
+void processSkyInput(SkyboxEnum& sky);
+void processNameInput(std::string& fileName);
+void processDirectoryInput(std::string& direc, std::string& last);
+void processPositionInput(RenderPosition& position);
+void processResolutionInput(RenderResolution& resolution);
+void processExposureInput(float& expValue, bool& isValueSet);
+void processIntensityInput(float& intensityValue, bool& isValueSet);
+
+// INTERPRET VALUES
+void interpretFileValues(std::vector<std::string>& imgPaths);
+std::string interpretSkyValue(SkyboxEnum& sky);
+void interpretPositionValue(RenderPosition& position);
+void interpretResolutionValue(RenderResolution& resolution);
+
+// MAIN FUNCTIONS
+void generateAndSaveImage(const std::string& fileName, const std::string& saveDir);
+void interactiveModeLoop(std::string fileName, std::string saveDir, std::vector<std::string> imgPaths, SkyboxEnum sky, RenderPosition position, RenderResolution resolution);
 #endif
 
 constexpr const char* WINDOW_NAME = "PBR_Visualiser";
@@ -129,7 +154,7 @@ constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
 Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-std::string imageName[6] = { "Albedo", "Normal", "Metallic", "Displacement", "Roughness", "AO" };
+static const std::string imageName[6] = { "Albedo", "Normal", "Metallic", "Displacement", "Roughness", "AO" };
 GLuint defaultWhiteTexture = 0;
 GLuint defaultBlackTexture = 0;
 
@@ -140,35 +165,12 @@ float height_scale = 0.04f;
 float exposure = 1.f;
 float colorIntensity = 1.f;
 
-#if !WINDOW_APP
-std::vector<std::string> skyboxPaths =
-{
-    "/res/skybox/rooitou_park_4k.hdr",
-    "/res/skybox/hilly_terrain_01_4k.hdr",
-    "/res/skybox/brown_photostudio_01_4k.hdr",
-    "/res/skybox/modern_bathroom_4k.hdr",
-    "/res/skybox/moonless_golf_4k.hdr",
-    "/res/skybox/snowy_field_4k.hdr",
-    "/res/skybox/venice_sunset_4k.hdr",
-    "/res/skybox/satara_night_4k.hdr"
-};
-
-glm::vec3 quadVerts[4] = {
-    { 0.f, -.5f, -.5f },
-    { 0.f, -.5f, .5f  },
-    { 0.f, .5f, -.5f  },
-    { 0.f, .5f,  .5f  }
-};
-
-unsigned int quadIndi[6] = {
-    0, 1, 2,
-    1, 3, 2
-};
-#endif
-
 #if WINDOW_APP
 bool openFileDialogs[6] = { false, false, false, false, false, false };
 ImFileDialogInfo fileDialogInfos[6];
+
+bool drawSkybox = true;
+ImVec4 bgColor = ImVec4(0.f, 0.f, 0.f, 1.f);
 
 float cameraSpeed = 40.f;
 bool released = true;
@@ -177,6 +179,18 @@ float sensitivity = 0.1f;
 
 GLfloat lastX = 0.f, lastY = 0.f;
 float rotateAngle = 50.f;
+#else
+static const std::vector<std::string> skyboxPaths =
+{
+    "\\res\\skybox\\rooitou_park_4k.hdr",
+    "\\res\\skybox\\hilly_terrain_01_4k.hdr",
+    "\\res\\skybox\\brown_photostudio_01_4k.hdr",
+    "\\res\\skybox\\modern_bathroom_4k.hdr",
+    "\\res\\skybox\\moonless_golf_4k.hdr",
+    "\\res\\skybox\\snowy_field_4k.hdr",
+    "\\res\\skybox\\venice_sunset_4k.hdr",
+    "\\res\\skybox\\satara_night_4k.hdr"
+};
 #endif
 
 int main(int argc, char** argv)
@@ -187,6 +201,8 @@ int main(int argc, char** argv)
 
 #if WINDOW_APP
     drawBanner();
+
+    spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
 #else
 
     std::string fileName;
@@ -270,6 +286,9 @@ int main(int argc, char** argv)
             else if (arg == "-v") {
                 Config::setVerbose(true);
             }
+            else if (arg == "-I") {
+                Config::setInteractive(true);
+            }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
             }
@@ -303,46 +322,10 @@ int main(int argc, char** argv)
         spdlog::info("No arguments were passed to the program.");
     }
 
-    switch (resolution) {
-        case RenderResolution::R128: {
-            WINDOW_WIDTH = 128;
-            WINDOW_HEIGHT = 128;
-            break;
-        }
-        case RenderResolution::R256: {
-            WINDOW_WIDTH = 256;
-            WINDOW_HEIGHT = 256;
-            break;
-        }
-        case RenderResolution::R512: {
-            WINDOW_WIDTH = 512;
-            WINDOW_HEIGHT = 512;
-            break;
-        }
-        case RenderResolution::R1K: {
-            WINDOW_WIDTH = 1024;
-            WINDOW_HEIGHT = 1024;
-            break;
-        }
-        case RenderResolution::R2K: {
-            WINDOW_WIDTH = 2048;
-            WINDOW_HEIGHT = 2048;
-            break;
-        }
-        case RenderResolution::R4K: {
-            WINDOW_WIDTH = 4096;
-            WINDOW_HEIGHT = 4096;
-            break;
-        }
-        case RenderResolution::DEFAULT: {
-            WINDOW_WIDTH = 2048;
-            WINDOW_HEIGHT = 2048;
-            break;
-        }
-    }
-#endif
+    interpretResolutionValue(resolution);
 
-    spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
+    if (!Config::isInteractive()) spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
+#endif
 
     if (!init())
     {
@@ -358,30 +341,21 @@ int main(int argc, char** argv)
 
     Camera::Init(window);
 #else
-    Camera::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT));
+    Camera::Init(window);
 #endif
 
 #if WINDOW_APP
-    Skybox::Init(window, /*exeDirPath,*/ "./res/skybox/rooitou_park_4k.hdr");
+    Skybox::Init(window, std::string(exeDirPath + "\\res\\skybox\\rooitou_park_4k.hdr").c_str());
 #else
 
-    spdlog::info("Skybox: {}", to_string(sky));
+    if (!Config::isInteractive()) spdlog::info("Skybox: {}", to_string(sky));
 
-    Skybox::Init(glm::ivec2(WINDOW_WIDTH, WINDOW_HEIGHT), /*exeDirPath,*/ std::string(exeDirPath + skyboxPaths[(uint8_t)(sky != SkyboxEnum::DEFAULT ? sky : SkyboxEnum::PARK)]).c_str());
+    Skybox::Init(window, interpretSkyValue(sky).c_str());
 
-    for (size_t i = 0; i < imgPaths.size(); ++i) {
-        TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
-        TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
-        imageTextures[i] = new Texture2D(imgPaths[i].c_str(), inter, form);
+    if (!Config::isInteractive()) {
+        interpretFileValues(imgPaths);
+        imgPaths.clear();
     }
-
-    if (6 - imgPaths.size() > 0) {
-        for (size_t z = imgPaths.size(); z < 6; ++z) {
-            imageTextures[z] = new Texture2D(z >= 2 && z <= 4 ? defaultBlackTexture : defaultWhiteTexture);
-        }
-    }
-
-    imgPaths.clear();
 #endif
 
     glGenVertexArrays(1, &quadVAO);
@@ -389,33 +363,11 @@ int main(int argc, char** argv)
 #if WINDOW_APP
     set_shape(quadVAO, shapeType);
     set_plane_normal_orientation(planeNormalOrientation);
-#else
-    glBindVertexArray(quadVAO);
-
-    GLuint quadVBO, quadEBO;
-
-    glGenBuffers(1, &quadVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), quadVerts, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &quadEBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), quadIndi, GL_STATIC_DRAW);
-
-    // Vertices positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 #endif
 
 #if WINDOW_APP
-    //PBR = new Shader(std::string(exeDirPath + "/res/shader/basic.vert").c_str(), std::string(exeDirPath + "/res/shader/basic.frag").c_str());
     PBR = Shader::FromExtractor("basic.vert", "basic.frag");
 #else
-    //PBR = new Shader(std::string(exeDirPath + "/res/shader/basic2.vert").c_str(), std::string(exeDirPath + "/res/shader/basic2.frag").c_str());
     PBR = Shader::FromExtractor("basic2.vert", "basic2.frag");
 #endif
 
@@ -424,53 +376,11 @@ int main(int argc, char** argv)
     Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
     trans = glm::translate(trans, glm::vec3(-6.f, 0.f, 0.f));
 #else
-    switch (position) {
-        case RenderPosition::TOP: {
-            Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
-            Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
-            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
-            break;
-        }
-        case RenderPosition::BOTTOM: {
-            Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
-            Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
-            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
-            break;
-        }
-        case RenderPosition::FRONT: {
-            Camera::SetPosition(glm::vec3(0.05f, 0.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(1.2f, 0.f, 0.f));
-            trans = glm::rotate(trans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
-            break;
-        }
-        case RenderPosition::DEFAULT:
-        case RenderPosition::BACK: {
-            Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
-            Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
-            break;
-        }
-        case RenderPosition::RIGHT: {
-            Camera::SetPosition(glm::vec3(0.f, 0.f, 0.05f));
-            Camera::SetRotation(glm::vec3(0.f, 90.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(0.f, 0.f, 1.2f));
-            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
-            break;
-        }
-        case RenderPosition::LEFT: {
-            Camera::SetPosition(glm::vec3(0.f, 0.f, -0.05f));
-            Camera::SetRotation(glm::vec3(0.f, -90.f, 0.f));
-            trans = glm::translate(trans, glm::vec3(0.f, 0.f, -1.2f));
-            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
-            break;
-        }
-    }
+    interpretPositionValue(position);
 
-    spdlog::info("Position: {}", to_string(position));
-    spdlog::info("Exposure: {}", exposure);
-    spdlog::info("Color Intensity: {}", colorIntensity);
+    if (!Config::isInteractive()) spdlog::info("Position: {}", to_string(position));
+    if (!Config::isInteractive()) spdlog::info("Exposure: {}", exposure);
+    if (!Config::isInteractive()) spdlog::info("Color Intensity: {}", colorIntensity);
 
 #endif
 
@@ -498,80 +408,21 @@ int main(int argc, char** argv)
         end_frame();
     }
 #else
-    GLuint FBO = 0, RBO = 0, resTex = 0;
-    glGenFramebuffers(1, &FBO);
-    glGenRenderbuffers(1, &RBO);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, RBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WINDOW_WIDTH, WINDOW_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RBO);
-
-    glGenTextures(1, &resTex);
-    glBindTexture(GL_TEXTURE_2D, resTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resTex, 0);
-
-    for (int i = 0; i < 3; ++i) {
-        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-        render();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glfwPollEvents();
-        glfwMakeContextCurrent(window);
-        glfwSwapBuffers(window);
-    }
-
-    // Save Image
-    int width, height;
-    glBindTexture(GL_TEXTURE_2D, resTex);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-
-    unsigned char* data = new unsigned char[width * height * 3]; // GL_RGB
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-
-    stbi_flip_vertically_on_write(true);
-    std::string name = !fileName.empty() ? fileName : "PBR_Image.png";
-    std::string savePath = !saveDir.empty() ? saveDir : std::filesystem::current_path().string();
-    int result = stbi_write_png(std::filesystem::path(std::string(savePath).append("\\").append(name)).string().c_str(), width, height, 3, data, 0);
-
-    if (result != 0) {
-        spdlog::info("File '{}' saved in directory '{}'", name, savePath);
+    if (Config::isInteractive()) {
+        interactiveModeLoop(fileName, saveDir, imgPaths, sky, position, resolution);
+        spdlog::set_pattern("%+");
     }
     else {
-        spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, savePath);
+        generateAndSaveImage(fileName, saveDir);
     }
-
-    delete[] data;
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glDeleteTextures(1, &resTex);
-    glDeleteRenderbuffers(1, &RBO);
-    glDeleteFramebuffers(1, &FBO);
 #endif
 
     glDeleteVertexArrays(1, &quadVAO);
 
-#if WINDOW_APP
-    Shape::Deinit();
-#else
-    glDeleteBuffers(1, &quadVBO);
-    glDeleteBuffers(1, &quadEBO);
-#endif
-
     delete PBR;
     PBR = nullptr;
     Skybox::Deinit();
+    Shape::Deinit();
 
     Camera::Deinit();
 
@@ -587,6 +438,7 @@ int main(int argc, char** argv)
     ShadersExtractor::Deinit();
 
 #if WINDOW_APP
+    ModelLoader::Deinit();
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -635,9 +487,7 @@ bool init()
 
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
-#if _DEBUG
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-#endif
 
     bool err = !gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -709,7 +559,11 @@ void render()
 {
     // OpenGL Rendering code goes here
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#if WINDOW_APP
+    glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w);
+#else
     glClearColor(0.f, 0.f, 0.f, 1.f);
+#endif
 
     PBR->Use();
     PBR->SetMat4("model", trans);
@@ -747,9 +601,7 @@ void render()
     PBR->SetInt("brdfLUT", 8);
 
     glBindVertexArray(quadVAO);
-#if !WINDOW_APP
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)quadIndi);
-#else
+#if WINDOW_APP
     switch (shapeType) {
         case ShapeType::Sphere: {
             glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
@@ -765,18 +617,31 @@ void render()
             glDrawElements(GL_TRIANGLES, Shape::GetQuadIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetQuadIndices());
             break;
         }
+        case ShapeType::Loaded_Model: {
+            if (ModelLoader::IsInit()) {
+                if (ModelLoader::HasIndices()) glDrawElements(GL_TRIANGLES, ModelLoader::GetIndicesCount(), GL_UNSIGNED_INT, (void*)ModelLoader::GetIndices());
+                else glDrawArrays(GL_TRIANGLES, 0, ModelLoader::GetVerticesCount());
+            }
+            break;
+        }
         default: {
             glDrawElements(GL_TRIANGLES, Shape::GetSphereIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetSphereIndices());
         }
     }
+#else
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 #endif
     glBindVertexArray(0);
 
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
-    Skybox::Draw();
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
+#if WINDOW_APP
+    if (drawSkybox) {
+        glDepthFunc(GL_LESS);
+        glCullFace(GL_BACK);
+        Skybox::Draw();
+        glDepthFunc(GL_LESS);
+        glCullFace(GL_BACK);
+    }
+#endif
 }
 
 GLuint LoadDefaultWhiteTexture()
@@ -811,232 +676,7 @@ GLuint LoadDefaultBlackTexture()
     return textureID;
 }
 
-#if !WINDOW_APP
-void printHelp() {
-
-    drawBanner();
-
-    spdlog::set_pattern("%v");
-
-    spdlog::info("Usage:");
-    spdlog::info("  PBR_Visualiser.exe ([-h] | [-v] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>])");
-    spdlog::info("Options:");
-    spdlog::info("  -h                   Display this help message and exit.");
-    spdlog::info("  -v                   Throws more detailed information as output to the console");
-    spdlog::info("  -f <image_path>      Specify up to 6 image paths to process. Additional paths will be ignored.");
-    spdlog::info("                       The paths must be in the order: albedo, normal, metallness, displacement, roughness, ambient occlusion.");
-    spdlog::info("                       Example: program -f albedo_image.jpg normal_image.png metalness_image.png");
-    spdlog::info("  -n <output_name>     Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
-    spdlog::info("  -d <directory_path>  Specify the directory where files will be saved. Default is the current executable path.");
-    spdlog::info("  -p <position>        Specify the position of the plane in world. Accepted values: top, bottom, front, back, right, left.");
-    spdlog::info("                       Default position is 'back'.");
-    spdlog::info("  -s <skybox>          Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
-    spdlog::info("                       Default skybox texture is 'park'.");
-    spdlog::info("  -r <resolution>      Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
-    spdlog::info("                       Default resolution is 'r2k'.");
-    spdlog::info("                       The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
-    spdlog::info("  -e <exposure_value>  Specify the exposure value of output image. Value must be in valid float format within range (0 - 11). Default value is 1.0.");
-    spdlog::info("  -i <color_intensity> Specify the color intensity value of output image. Value must be in valid float format within range (0 - 4). Default value is 1.0.");
-}
-
-void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths) {
-    if (i >= argc) {
-        spdlog::warn("The '-f' prefix was used, but no file path was specified!");
-        return;
-    }
-
-    while (i < argc && imgPaths.size() < 6) {
-        std::string arg = argv[i];
-
-        // Check if the next argument is a new flag (starts with '-')
-        if (arg[0] == '-') {
-            --i;  // Step back to re-process this as the next option
-            return;
-        }
-
-        imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
-        ++i;
-    }
-
-    if (imgPaths.size() == 6 && i < argc && argv[i][0] != '-') {
-        spdlog::warn("Too many image paths specified! Ignoring additional paths.");
-        return;
-    }
-
-    if (i < argc && std::string(argv[i])[0] == '-') {
-        --i;
-        return;
-    }
-}
-
-void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
-{
-    static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night" };
-
-    if (sky != SkyboxEnum::DEFAULT) {
-        spdlog::warn("Skybox has already been specified! Ignoring additional resolution.");
-        return;
-    }
-
-    std::string res = arg;
-
-    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
-        {
-            return std::tolower(c);
-        });
-
-    auto item = std::find(validSkyboxes.begin(), validSkyboxes.end(), res);
-    if (item != validSkyboxes.end()) {
-        sky = (SkyboxEnum)(uint8_t)(item - validSkyboxes.begin());
-        return;
-    }
-    else {
-        spdlog::warn("Invalid skybox argument: '{}'. Accepted values are: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.", arg);
-        return;
-    }
-}
-
-void processNameArgument(const std::string& arg, std::string& fileName) {
-    if (!fileName.empty()) {
-        spdlog::warn("File name has already been specified! Ignoring additional name.");
-        return;
-    }
-    fileName = arg + ".png";
-}
-
-void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
-    try {
-        std::filesystem::path dirPath = std::filesystem::absolute(arg);
-        if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
-            saveDir = dirPath.string();
-        }
-        else {
-            spdlog::warn("Provided path after '-d' is invalid or is not a directory!");
-        }
-    }
-    catch (const std::filesystem::filesystem_error& e) {
-        spdlog::warn("Error processing directory path after '-d': {}", e.what());
-    }
-}
-
-void processPositionArgument(const std::string& arg, RenderPosition& position) {
-    static const std::vector<std::string> validPositions = { "top", "bottom", "front", "back", "right", "left" };
-
-    if (position != RenderPosition::DEFAULT) {
-        spdlog::warn("Position has already been specified! Ignoring additional position.");
-        return;
-    }
-
-    std::string pos = arg;
-
-    std::transform(pos.begin(), pos.end(), pos.begin(), [](unsigned char c)
-    {
-        return std::tolower(c);
-    });
-
-    auto item = std::find(validPositions.begin(), validPositions.end(), pos);
-    if (item != validPositions.end()) {
-        position = (RenderPosition)(uint8_t)(item - validPositions.begin());
-        return;
-    }
-    else {
-        spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, right, left.", arg);
-        return;
-    }
-}
-
-void processResolutionArgument(const std::string& arg, RenderResolution& resolution) {
-    static const std::vector<std::string> validResolutions = { "r128", "r256", "r512", "r1k", "r2k", "r4k" };
-
-    if (resolution != RenderResolution::DEFAULT) {
-        spdlog::warn("Resolution has already been specified! Ignoring additional resolution.");
-        return;
-    }
-
-    std::string res = arg;
-
-    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
-        {
-            return std::tolower(c);
-        });
-
-    auto item = std::find(validResolutions.begin(), validResolutions.end(), res);
-    if (item != validResolutions.end()) {
-        resolution = (RenderResolution)(uint8_t)(item - validResolutions.begin());
-        return;
-    }
-    else {
-        spdlog::warn("Invalid resolution argument: '{}'. Accepted values are: r128, r256, r512, r1k, r2k, r4k.", arg);
-        return;
-    }
-}
-
-void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet) {
-
-    const float MIN_EXPOSURE_VALUE = 0.0f;
-    const float MAX_EXPOSURE_VALUE = 11.0f;
-
-    if (isValueSet) {
-        spdlog::warn("Exposure value has already been specified and is valid! Ignoring additional input.");
-        return;
-    }
-
-    std::istringstream iss(arg);
-    float extractedValue;
-    if (!(iss >> extractedValue)) {
-        spdlog::warn("Invalid exposure float format in input string: '{}'. Expected only a valid float value.", arg);
-        return;
-    }
-
-    // Consume any remaining whitespace in the stream
-    iss >> std::ws;
-    if (iss.peek() != EOF) {
-        spdlog::warn("Input exposure string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
-        return;
-    }
-
-    if (extractedValue < MIN_EXPOSURE_VALUE || extractedValue > MAX_EXPOSURE_VALUE) {
-        spdlog::warn("Exposure value out of range ({} - {}): {}", MIN_EXPOSURE_VALUE, MAX_EXPOSURE_VALUE, extractedValue);
-        return;
-    }
-
-    expValue = extractedValue;
-    isValueSet = true;
-}
-
-void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet) {
-
-    const float MIN_INTENSITY_VALUE = 0.0f;
-    const float MAX_INTENSITY_VALUE = 4.0f;
-
-    if (isValueSet) {
-        spdlog::warn("Color intensity value has already been specified and is valid! Ignoring additional input.");
-        return;
-    }
-
-    std::istringstream iss(arg);
-    float extractedValue;
-    if (!(iss >> extractedValue)) {
-        spdlog::warn("Invalid color intensity float format in input string: '{}'. Expected only a valid float value.", arg);
-        return;
-    }
-
-    // Consume any remaining whitespace in the stream
-    iss >> std::ws;
-    if (iss.peek() != EOF) {
-        spdlog::warn("Input color intensity string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
-        return;
-    }
-
-    if (extractedValue < MIN_INTENSITY_VALUE || extractedValue > MAX_INTENSITY_VALUE) {
-        spdlog::warn("Color intensity value out of range ({} - {}): {}", MIN_INTENSITY_VALUE, MAX_INTENSITY_VALUE, extractedValue);
-        return;
-    }
-
-    intensityValue = extractedValue;
-    isValueSet = true;
-}
-#else
+#if WINDOW_APP
 void set_shape(GLuint VAO, ShapeType type)
 {
     glBindVertexArray(VAO);
@@ -1055,6 +695,19 @@ void set_shape(GLuint VAO, ShapeType type)
         case ShapeType::Plane: {
             glBindBuffer(GL_ARRAY_BUFFER, Shape::GetQuadVBO());
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Shape::GetQuadEBO());
+            break;
+        }
+        case ShapeType::Loaded_Model: {
+            if (ModelLoader::IsInit()) {
+                glBindBuffer(GL_ARRAY_BUFFER, ModelLoader::GetVBO());
+
+                if (ModelLoader::HasIndices()) {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ModelLoader::GetEBO());
+                }
+                else {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                }
+            }
             break;
         }
         default: {
@@ -1318,12 +971,20 @@ void imgui_render()
         else spdlog::error("Failed to save screenshot!");
     }
 
-    if (ImGui::BeginCombo("Shape", to_string(shapeType).c_str()))
+    std::string sType = to_string(shapeType);
+    std::replace(sType.begin(), sType.end(), '_', ' ');
+    if (ImGui::BeginCombo("Shape", sType.c_str()))
     {
         for (size_t i = 0; i < size<ShapeType>(); ++i) {
             ShapeType acc = (ShapeType)i;
-            if (ImGui::Selectable(to_string(acc).c_str(), shapeType == acc))
+            std::string name = to_string(acc);
+            std::replace(name.begin(), name.end(), '_', ' ');
+            if (ImGui::Selectable(name.c_str(), shapeType == acc))
             {
+                if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit()) {
+                    ModelLoader::OpenImGuiFileDialog(std::string(exeDirPath + "\\res\\model"));
+                }
+
                 set_shape(quadVAO, acc);
                 break;
             }
@@ -1331,7 +992,21 @@ void imgui_render()
         ImGui::EndCombo();
     }
 
-    if (shapeType == ShapeType::Plane) 
+    if (ImGui::Button("Upload Model"))
+    {
+        ModelLoader::OpenImGuiFileDialog(std::string(exeDirPath + "\\res\\model"));
+    }
+
+    if (ModelLoader::ShowImGuiFileDialog()) {
+        set_shape(quadVAO, shapeType);
+    }
+
+    ImGui::SameLine();
+
+    std::string n = "File: " + (ModelLoader::GetModelName().empty() ? "Not Loaded" : ModelLoader::GetModelName());
+    ImGui::Text(n.c_str());
+
+    if (shapeType == ShapeType::Plane)
     {
         if (ImGui::BeginCombo("Plane Normal Orientation", to_string(planeNormalOrientation).c_str()))
         {
@@ -1347,15 +1022,28 @@ void imgui_render()
         }
     }
 
+    ImGui::Checkbox("Draw Skybox", &drawSkybox);
+
+    static const ImGuiColorEditFlags config = ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Uint8 | ImGuiColorEditFlags_DisplayRGB;
+    if (!drawSkybox) ImGui::ColorEdit3("Background Color", (float*)&bgColor, config);
+
     for (int i = 0; i < 6; ++i)
     {
+        ImGui::BeginGroup();
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
         {
             openFileDialogs[i] = true;
             fileDialogInfos[i].title = "Choose " + imageName[i] + " image";
             fileDialogInfos[i].type = ImGuiFileDialogType_OpenFile;
-            fileDialogInfos[i].directoryPath = std::filesystem::current_path().append("./res/textures/");
+            fileDialogInfos[i].directoryPath = std::string(exeDirPath + "\\res\\textures\\");
         }
+
+        if (ImGui::Button(("Reset##" + imageName[i]).c_str()))
+        {
+            delete imageTextures[i];
+            imageTextures[i] = nullptr;
+        }
+        ImGui::EndGroup();
 
         if (openFileDialogs[i])
         {
@@ -1373,7 +1061,7 @@ void imgui_render()
         {
             ImGui::Image((intptr_t)imageTextures[i]->GetId(), ImVec2(128, 128));
         }
-        else 
+        else
         {
             ImGui::Image((intptr_t)(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture), ImVec2(128, 128));
         }
@@ -1395,5 +1083,827 @@ void imgui_end()
     ImGui::Render();
     glfwMakeContextCurrent(window);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+#else
+// ADDITIONAL FUNCTIONS
+bool isValidFileNameWindows(const std::string& name) {
+    // Reserved names by Windows
+    static const std::vector<std::string> reservedNames = {
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5",
+        "com6", "com7", "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4",
+        "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+    };
+
+    std::string res = name;
+
+    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    // Check if name is reserved by Windows
+    auto item = std::find(reservedNames.begin(), reservedNames.end(), res);
+    if (item != reservedNames.end()) {
+        spdlog::warn("Invalid fileName argument: '{}'. The specified file name is a reserved name by Windows.", name);
+        return false;
+    }
+
+    // Check if name has invalid characters
+    std::regex invalidChars(R"([<>:"/\\|?*])");
+    if (std::regex_search(name, invalidChars)) {
+        spdlog::warn("Invalid fileName argument: '{}'. The specified file name has invalid characters.", name);
+        return false;
+    }
+
+    // Check if name ends with space or dot
+    if (!name.empty() && (name.back() == ' ' || name.back() == '.')) {
+        spdlog::warn("Invalid fileName argument: '{}'. The specified file name ends with space or dot.", name);
+        return false;
+    }
+
+    return true;
+}
+
+// PROCESS ARGUMENTS
+void printHelp() {
+
+    drawBanner();
+
+    spdlog::set_pattern("%v");
+
+    spdlog::info("Usage:");
+    spdlog::info("  PBR_Visualiser.exe ([-h] | [-I] | [-v] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>])");
+    spdlog::info("Options:");
+    spdlog::info("  -h                   Display this help message and exit.");
+    spdlog::info("  -I                   Turns on the interactive mode where the user will be asked one by one to provide the values ​​needed to generate the image.");
+    spdlog::info("                       If the user provides these values ​​through the call arguments, they will be included when generating the first image.");
+    spdlog::info("                       After each generated image, the user will be asked whether he wants to generate another image.");
+    spdlog::info("  -v                   Throws more detailed information as output to the console");
+    spdlog::info("  -f <image_path>      Specify up to 6 image paths to process. Additional paths will be ignored.");
+    spdlog::info("                       The paths must be in the order: albedo, normal, metallness, displacement, roughness, ambient occlusion.");
+    spdlog::info("                       Example: program -f albedo_image.jpg normal_image.png metalness_image.png");
+    spdlog::info("  -n <output_name>     Specify the output file name. Appends '.png' by default. Default is 'PBR_Image'.");
+    spdlog::info("  -d <directory_path>  Specify the directory where files will be saved. Default is the current executable path.");
+    spdlog::info("  -p <position>        Specify the position of the plane in world. Accepted values: top, bottom, front, back, right, left.");
+    spdlog::info("                       Default position is 'back'.");
+    spdlog::info("  -s <skybox>          Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
+    spdlog::info("                       Default skybox texture is 'park'.");
+    spdlog::info("  -r <resolution>      Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
+    spdlog::info("                       Default resolution is 'r2k'.");
+    spdlog::info("                       The dimensions of the output image for the corresponding value are: 128x128, 256x256, 512x512, 1024x1024, 2048x2048, 4096x4096.");
+    spdlog::info("  -e <exposure_value>  Specify the exposure value of output image. Value must be in valid float format within range (0 - 11). Default value is 1.0.");
+    spdlog::info("  -i <color_intensity> Specify the color intensity value of output image. Value must be in valid float format within range (0 - 4). Default value is 1.0.");
+}
+
+void processFileArguments(int& i, int argc, char** argv, std::vector<std::string>& imgPaths) {
+    if (i >= argc) {
+        spdlog::warn("The '-f' prefix was used, but no file path was specified!");
+        return;
+    }
+
+    while (i < argc && imgPaths.size() < 6) {
+        std::string arg = argv[i];
+
+        // Check if the next argument is a new flag (starts with '-')
+        if (arg[0] == '-') {
+            --i;  // Step back to re-process this as the next option
+            return;
+        }
+
+        imgPaths.push_back(std::filesystem::absolute(std::filesystem::path(arg)).string());
+        ++i;
+    }
+
+    if (imgPaths.size() == 6 && i < argc && argv[i][0] != '-') {
+        spdlog::warn("Too many image paths specified! Ignoring additional paths.");
+        return;
+    }
+
+    if (i < argc && std::string(argv[i])[0] == '-') {
+        --i;
+        return;
+    }
+}
+
+void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
+{
+    static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night" };
+
+    if (sky != SkyboxEnum::DEFAULT) {
+        spdlog::warn("Skybox has already been specified! Ignoring additional resolution.");
+        return;
+    }
+
+    std::string res = arg;
+
+    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    auto item = std::find(validSkyboxes.begin(), validSkyboxes.end(), res);
+    if (item != validSkyboxes.end()) {
+        sky = (SkyboxEnum)(uint8_t)(item - validSkyboxes.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid skybox argument: '{}'. Accepted values are: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.", arg);
+        return;
+    }
+}
+
+void processNameArgument(const std::string& arg, std::string& fileName) {
+    if (!fileName.empty()) {
+        spdlog::warn("File name has already been specified! Ignoring additional name.");
+        return;
+    }
+
+    if (!isValidFileNameWindows(arg)) {
+        return;
+    }
+
+    fileName = arg + ".png";
+}
+
+void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
+    try {
+        std::filesystem::path dirPath = std::filesystem::absolute(arg);
+        if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+            saveDir = dirPath.string();
+        }
+        else {
+            spdlog::warn("Provided path after '-d' is invalid or is not a directory!");
+        }
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+        spdlog::warn("Error processing directory path after '-d': {}", e.what());
+    }
+}
+
+void processPositionArgument(const std::string& arg, RenderPosition& position) {
+    static const std::vector<std::string> validPositions = { "top", "bottom", "front", "back", "right", "left" };
+
+    if (position != RenderPosition::DEFAULT) {
+        spdlog::warn("Position has already been specified! Ignoring additional position.");
+        return;
+    }
+
+    std::string pos = arg;
+
+    std::transform(pos.begin(), pos.end(), pos.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    auto item = std::find(validPositions.begin(), validPositions.end(), pos);
+    if (item != validPositions.end()) {
+        position = (RenderPosition)(uint8_t)(item - validPositions.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid position argument: '{}'. Accepted values are: top, bottom, front, back, right, left.", arg);
+        return;
+    }
+}
+
+void processResolutionArgument(const std::string& arg, RenderResolution& resolution) {
+    static const std::vector<std::string> validResolutions = { "r128", "r256", "r512", "r1k", "r2k", "r4k" };
+
+    if (resolution != RenderResolution::DEFAULT) {
+        spdlog::warn("Resolution has already been specified! Ignoring additional resolution.");
+        return;
+    }
+
+    std::string res = arg;
+
+    std::transform(res.begin(), res.end(), res.begin(), [](unsigned char c)
+        {
+            return std::tolower(c);
+        });
+
+    auto item = std::find(validResolutions.begin(), validResolutions.end(), res);
+    if (item != validResolutions.end()) {
+        resolution = (RenderResolution)(uint8_t)(item - validResolutions.begin());
+        return;
+    }
+    else {
+        spdlog::warn("Invalid resolution argument: '{}'. Accepted values are: r128, r256, r512, r1k, r2k, r4k.", arg);
+        return;
+    }
+}
+
+void processExposureArgument(const std::string& arg, float& expValue, bool& isValueSet) {
+
+    const float MIN_EXPOSURE_VALUE = 0.0f;
+    const float MAX_EXPOSURE_VALUE = 11.0f;
+
+    if (isValueSet) {
+        spdlog::warn("Exposure value has already been specified and is valid! Ignoring additional input.");
+        return;
+    }
+
+    std::istringstream iss(arg);
+    float extractedValue;
+    if (!(iss >> extractedValue)) {
+        spdlog::warn("Invalid exposure float format in input string: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    // Consume any remaining whitespace in the stream
+    iss >> std::ws;
+    if (iss.peek() != EOF) {
+        spdlog::warn("Input exposure string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    if (extractedValue < MIN_EXPOSURE_VALUE || extractedValue > MAX_EXPOSURE_VALUE) {
+        spdlog::warn("Exposure value out of range ({} - {}): {}", MIN_EXPOSURE_VALUE, MAX_EXPOSURE_VALUE, extractedValue);
+        return;
+    }
+
+    expValue = extractedValue;
+    isValueSet = true;
+}
+
+void processIntensityArgument(const std::string& arg, float& intensityValue, bool& isValueSet) {
+
+    const float MIN_INTENSITY_VALUE = 0.0f;
+    const float MAX_INTENSITY_VALUE = 4.0f;
+
+    if (isValueSet) {
+        spdlog::warn("Color intensity value has already been specified and is valid! Ignoring additional input.");
+        return;
+    }
+
+    std::istringstream iss(arg);
+    float extractedValue;
+    if (!(iss >> extractedValue)) {
+        spdlog::warn("Invalid color intensity float format in input string: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    // Consume any remaining whitespace in the stream
+    iss >> std::ws;
+    if (iss.peek() != EOF) {
+        spdlog::warn("Input color intensity string contains invalid trailing characters: '{}'. Expected only a valid float value.", arg);
+        return;
+    }
+
+    if (extractedValue < MIN_INTENSITY_VALUE || extractedValue > MAX_INTENSITY_VALUE) {
+        spdlog::warn("Color intensity value out of range ({} - {}): {}", MIN_INTENSITY_VALUE, MAX_INTENSITY_VALUE, extractedValue);
+        return;
+    }
+
+    intensityValue = extractedValue;
+    isValueSet = true;
+}
+
+// PROCESS INPUT (Interacive Mode Only)
+void processFileInput(std::vector<std::string>& imgPaths)
+{
+    unsigned int i = 0;
+    for (const auto& name : imageName) {
+        if (imgPaths.size() > i && !imgPaths[i].empty()) {
+            spdlog::info("The path to the '{}' map has already been set.", name);
+            ++i;
+            continue;
+        }
+
+        std::string userInput;
+        spdlog::info("Enter the '{}' map path [DEFAULT: {}]", name, i >= 2 && i <= 4 ? "Black" : "White");
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        if (imgPaths.size() <= i) {
+            imgPaths.push_back(userInput);
+        }
+        else {
+            imgPaths[i] = userInput;
+        }
+
+        ++i;
+    }
+}
+
+void processSkyInput(SkyboxEnum& sky)
+{
+    static const std::vector<std::string> skyboxes = { "Park", "Hill", "Photostudio", "Bathroom", "Moonless Golf", "Snowy Field", "Venice Sunset", "Satara Night" };
+
+    if (sky != SkyboxEnum::DEFAULT) {
+        spdlog::info("Skybox was already specified! Selected skybox: {}", to_string(sky));
+        return;
+    }
+
+    spdlog::info("Choose Skybox:");
+
+    for (size_t i = 0; i < skyboxes.size(); ++i) {
+        spdlog::info("{}. {}", i + 1, skyboxes[i]);
+    }
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            int choice = std::stoi(userInput);
+
+            if (choice >= 1 && choice <= static_cast<int>(skyboxes.size())) {
+                sky = (SkyboxEnum)(uint8_t)(choice - 1);
+                spdlog::info("You selected: {}", skyboxes[choice - 1]);
+                break;
+            }
+            else {
+                spdlog::error("Invalid choice. Please select a number between 1 and {}.", skyboxes.size());
+                continue;
+            }
+        }
+        catch (const std::exception&) {
+            spdlog::error("Invalid input. Please enter a valid number.");
+            continue;
+        }
+    }
+}
+
+void processNameInput(std::string& fileName)
+{
+    if (!fileName.empty()) {
+        spdlog::info("File name was already specified! Typed name: {}", fileName);
+        return;
+    }
+
+    spdlog::info("Enter file name");
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        if (!isValidFileNameWindows(userInput)) {
+            continue;
+        }
+
+        fileName = userInput + ".png";
+
+        spdlog::info("File name: {}", fileName);
+        break;
+    }
+}
+
+void processDirectoryInput(std::string& direc, std::string& last)
+{
+    if (!direc.empty()) {
+        spdlog::info("Save directory was already specified! Typed directory: {}", direc);
+        last = direc;
+        return;
+    }
+
+    if (!last.empty()) {
+        spdlog::info("Last used directory: {}", direc);
+        spdlog::info("Do you want to use last used directory? [y/n]");
+
+        while (true) {
+            std::string userInput;
+            std::cout << ">> ";
+            std::getline(std::cin, userInput);
+
+            if (userInput == "Y" || userInput == "y") {
+                direc = last;
+                spdlog::info("Save directory: {}", direc);
+                return;
+            }
+            else if (userInput == "N" || userInput == "n") {
+                break;
+            }
+            else {
+                spdlog::info("Unrecognized option. Type 'y' for yes or 'n' for no.");
+            }
+        }
+    }
+
+    spdlog::info("Enter file save directory");
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            std::filesystem::path dirPath = std::filesystem::absolute(userInput);
+            if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+                direc = dirPath.string();
+                last = dirPath.string();
+                spdlog::info("Save directory: {}", direc);
+                break;
+            }
+            else {
+                spdlog::info("Provided path is invalid or is not a directory!");
+                continue;
+            }
+        }
+        catch (const std::filesystem::filesystem_error& e) {
+            spdlog::info("Error processing save directory path: {}", e.what());
+            continue;
+        }
+    }
+}
+
+void processPositionInput(RenderPosition& position)
+{
+    static const std::vector<std::string> poses = { "Top", "Bottom", "Front", "Back", "Right", "Left" };
+
+    if (position != RenderPosition::DEFAULT) {
+        spdlog::info("Position was already specified! Selected position: {}", to_string(position));
+        return;
+    }
+
+    spdlog::info("Choose Position:");
+
+    for (size_t i = 0; i < poses.size(); ++i) {
+        spdlog::info("{}. {}", i + 1, poses[i]);
+    }
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            int choice = std::stoi(userInput);
+            if (choice >= 1 && choice <= static_cast<int>(poses.size())) {
+                position = (RenderPosition)(uint8_t)(choice - 1);
+                spdlog::info("You selected: {}", poses[choice - 1]);
+                break;
+            }
+            else {
+                spdlog::error("Invalid choice. Please select a number between 1 and {}.", poses.size());
+                continue;
+            }
+        }
+        catch (const std::exception&) {
+            spdlog::error("Invalid input. Please enter a valid number.");
+            continue;
+        }
+    }
+}
+
+void processResolutionInput(RenderResolution& resolution)
+{
+    static const std::vector<std::string> reses = { "128x128", "256x256", "512x512", "1024x1024", "2048x2048", "4096x4096" };
+
+    if (resolution != RenderResolution::DEFAULT) {
+        spdlog::info("Resolution was already specified! Selected resolution: {}", to_string(resolution));
+        return;
+    }
+
+    spdlog::info("Choose Resolution:");
+
+    for (size_t i = 0; i < reses.size(); ++i) {
+        spdlog::info("{}. {}", i + 1, reses[i]);
+    }
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            int choice = std::stoi(userInput);
+            if (choice >= 1 && choice <= static_cast<int>(reses.size())) {
+                resolution = (RenderResolution)(uint8_t)(choice - 1);
+                spdlog::info("You selected: {}", reses[choice - 1]);
+                break;
+            }
+            else {
+                spdlog::error("Invalid choice. Please select a number between 1 and {}.", reses.size());
+                continue;
+            }
+        }
+        catch (const std::exception&) {
+            spdlog::error("Invalid input. Please enter a valid number.");
+            continue;
+        }
+    }
+}
+
+void processExposureInput(float& expValue, bool& isValueSet)
+{
+    const float MIN_EXPOSURE_VALUE = 0.0f;
+    const float MAX_EXPOSURE_VALUE = 11.0f;
+
+    if (isValueSet) {
+        spdlog::info("Exposure value was already specified and is valid! Typed exposure: {}", expValue);
+        return;
+    }
+
+    spdlog::info("Enter the exposure value (0.0 - 11.0)");
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            float val = std::stof(userInput);
+            if (val >= MIN_EXPOSURE_VALUE && val <= MAX_EXPOSURE_VALUE) {
+                expValue = val;
+                isValueSet = true;
+                spdlog::info("Typed exposure value: {}", val);
+                break;
+            }
+            else {
+                spdlog::info("Exposure value out of range ({} - {}): {}", MIN_EXPOSURE_VALUE, MAX_EXPOSURE_VALUE, val);
+                continue;
+            }
+        }
+        catch (const std::exception&) {
+            spdlog::error("Invalid input. Please enter a valid float number.");
+            continue;
+        }
+    }
+}
+
+void processIntensityInput(float& intensityValue, bool& isValueSet)
+{
+    const float MIN_INTENSITY_VALUE = 0.0f;
+    const float MAX_INTENSITY_VALUE = 4.0f;
+
+    if (isValueSet) {
+        spdlog::info("Intensity value was already specified and is valid! Typed intensity: {}", intensityValue);
+        return;
+    }
+
+    spdlog::info("Enter the intensity value (0.0 - 4.0)");
+
+    while (true) {
+        std::string userInput;
+        std::cout << ">> ";
+        std::getline(std::cin, userInput);
+
+        try {
+            float val = std::stof(userInput);
+            if (val >= MIN_INTENSITY_VALUE && val <= MAX_INTENSITY_VALUE) {
+                intensityValue = val;
+                isValueSet = true;
+                spdlog::info("Typed intensity value: {}", val);
+                break;
+            }
+            else {
+                spdlog::info("Intensity value out of range ({} - {}): {}", MIN_INTENSITY_VALUE, MAX_INTENSITY_VALUE, val);
+                continue;
+            }
+        }
+        catch (const std::exception&) {
+            spdlog::error("Invalid input. Please enter a valid float number.");
+            continue;
+        }
+    }
+}
+
+// INTERPRET VALUES
+void interpretFileValues(std::vector<std::string>& imgPaths)
+{
+    std::vector<size_t> err_load = std::vector<size_t>();
+    for (size_t i = 0; i < imgPaths.size(); ++i) {
+        TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+        TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
+        imageTextures[i] = new Texture2D(imgPaths[i].c_str(), inter, form);
+
+        if (!imageTextures[i]->IsInit()) {
+            err_load.push_back(i);
+            delete imageTextures[i];
+            imageTextures[i] = nullptr;
+        }
+    }
+
+    if (6 - imgPaths.size() > 0) {
+        for (size_t z = imgPaths.size(); z < 6; ++z) {
+            err_load.push_back(z);
+        }
+    }
+
+    if (err_load.size() > 0) {
+        for (size_t z = 0; z < err_load.size(); ++z) {
+            size_t i = err_load[z];
+            imageTextures[i] = new Texture2D(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture);
+        }
+    }
+
+    err_load.clear();
+}
+
+std::string interpretSkyValue(SkyboxEnum& sky)
+{
+    return std::string(exeDirPath + skyboxPaths[(uint8_t)(sky != SkyboxEnum::DEFAULT ? sky : SkyboxEnum::PARK)]);
+}
+
+void interpretPositionValue(RenderPosition& position)
+{
+    trans = glm::mat4(1.f);
+    switch (position) {
+    case RenderPosition::TOP: {
+        Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
+        Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+        trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+        break;
+    }
+    case RenderPosition::BOTTOM: {
+        Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
+        Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
+        trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+        break;
+    }
+    case RenderPosition::FRONT: {
+        Camera::SetPosition(glm::vec3(0.05f, 0.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(1.2f, 0.f, 0.f));
+        trans = glm::rotate(trans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
+        break;
+    }
+    case RenderPosition::DEFAULT:
+    case RenderPosition::BACK: {
+        Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+        Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
+        break;
+    }
+    case RenderPosition::RIGHT: {
+        Camera::SetPosition(glm::vec3(0.f, 0.f, 0.05f));
+        Camera::SetRotation(glm::vec3(0.f, 90.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(0.f, 0.f, 1.2f));
+        trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
+        break;
+    }
+    case RenderPosition::LEFT: {
+        Camera::SetPosition(glm::vec3(0.f, 0.f, -0.05f));
+        Camera::SetRotation(glm::vec3(0.f, -90.f, 0.f));
+        trans = glm::translate(trans, glm::vec3(0.f, 0.f, -1.2f));
+        trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
+        break;
+    }
+    }
+}
+
+void interpretResolutionValue(RenderResolution& resolution)
+{
+    switch (resolution) {
+    case RenderResolution::R128: {
+        WINDOW_WIDTH = 128;
+        WINDOW_HEIGHT = 128;
+        break;
+    }
+    case RenderResolution::R256: {
+        WINDOW_WIDTH = 256;
+        WINDOW_HEIGHT = 256;
+        break;
+    }
+    case RenderResolution::R512: {
+        WINDOW_WIDTH = 512;
+        WINDOW_HEIGHT = 512;
+        break;
+    }
+    case RenderResolution::R1K: {
+        WINDOW_WIDTH = 1024;
+        WINDOW_HEIGHT = 1024;
+        break;
+    }
+    case RenderResolution::R2K: {
+        WINDOW_WIDTH = 2048;
+        WINDOW_HEIGHT = 2048;
+        break;
+    }
+    case RenderResolution::R4K: {
+        WINDOW_WIDTH = 4096;
+        WINDOW_HEIGHT = 4096;
+        break;
+    }
+    case RenderResolution::DEFAULT: {
+        WINDOW_WIDTH = 2048;
+        WINDOW_HEIGHT = 2048;
+        break;
+    }
+    }
+}
+
+// MAIN FUNCTIONS
+void generateAndSaveImage(const std::string& fileName, const std::string& saveDir)
+{
+    GLuint FBO = 0, RBO = 0, resTex = 0;
+    glGenFramebuffers(1, &FBO);
+    glGenRenderbuffers(1, &RBO);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+    glGenTextures(1, &resTex);
+    glBindTexture(GL_TEXTURE_2D, resTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resTex, 0);
+
+    for (int i = 0; i < 3; ++i) {
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        render();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glfwPollEvents();
+        glfwMakeContextCurrent(window);
+        glfwSwapBuffers(window);
+    }
+
+    // Save Image
+    int width, height;
+    glBindTexture(GL_TEXTURE_2D, resTex);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+    unsigned char* data = new unsigned char[width * height * 3]; // GL_RGB
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+    stbi_flip_vertically_on_write(true);
+    std::string name = !fileName.empty() ? fileName : "PBR_Image.png";
+    std::string savePath = !saveDir.empty() ? saveDir : std::filesystem::current_path().string();
+    int result = stbi_write_png(std::filesystem::path(std::string(savePath).append("\\").append(name)).string().c_str(), width, height, 3, data, 0);
+
+    if (result != 0) {
+        spdlog::info("File '{}' saved in directory '{}'", name, savePath);
+    }
+    else {
+        spdlog::error("There was an error while trying to save '{}' in directory '{}'", name, savePath);
+    }
+
+    delete[] data;
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glDeleteTextures(1, &resTex);
+    glDeleteRenderbuffers(1, &RBO);
+    glDeleteFramebuffers(1, &FBO);
+}
+
+void interactiveModeLoop(std::string fileName, std::string saveDir, std::vector<std::string> imgPaths, SkyboxEnum sky, RenderPosition position, RenderResolution resolution)
+{
+    std::string lastDir;
+    while (true) {
+        drawBanner();
+        spdlog::set_pattern("%v");
+
+        // PROCESS INPUT
+        processFileInput(imgPaths);
+        processSkyInput(sky);
+        processPositionInput(position);
+        processExposureInput(exposure, isExposureSet);
+        processIntensityInput(colorIntensity, isIntensitySet);
+        processNameInput(fileName);
+        processDirectoryInput(saveDir, lastDir);
+        processResolutionInput(resolution);
+
+        spdlog::set_pattern("%+");
+        // INTERPRET VALUES
+        interpretFileValues(imgPaths);
+        Skybox::ChangeTexture(interpretSkyValue(sky).c_str());
+        interpretPositionValue(position);
+        interpretResolutionValue(resolution);
+        glfwSetWindowSize(window, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+        generateAndSaveImage(fileName, saveDir);
+        spdlog::set_pattern("%v");
+
+        spdlog::info("Do you want to generate another image? [y/n]");
+
+        while (true) {
+            std::string userInput;
+            std::cout << ">> ";
+            std::getline(std::cin, userInput);
+
+            if (userInput == "Y" || userInput == "y") {
+                fileName.clear();
+                saveDir.clear();
+                imgPaths.clear();
+                sky = SkyboxEnum::DEFAULT;
+                position = RenderPosition::DEFAULT;
+                resolution = RenderResolution::DEFAULT;
+                isExposureSet = false;
+                isIntensitySet = false;
+                break;
+            }
+            else if (userInput == "N" || userInput == "n") {
+                return;
+            }
+            else {
+                spdlog::info("Unrecognized option. Type 'y' for yes or 'n' for no.");
+            }
+        }
+    }
 }
 #endif

@@ -8,6 +8,13 @@
 #include <imgui_impl/imgui_impl_glfw.h>
 #include <imgui_impl/imgui_impl_opengl3.h>
 #include <imgui_impl/imgui_filedialog.h>
+
+// CGLTF
+#include <cgltf.h>
+
+
+// TINY_OBJ_LOADER
+#include <tiny_obj_loader.h>
 #endif
 
 // GLAD
@@ -18,9 +25,9 @@
 
 // GLM
 #include <glm/glm.hpp>
+#include <glm/fwd.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/fwd.hpp>
 
 // GLI
 #include <gli/gli.hpp>
@@ -33,22 +40,23 @@
 #include <stb_image_write.h>
 
 // LIBs
-#include <string>
-#include <format>
-#include <regex>
-#include <memory>
-#include <fstream>
-#include <vector>
-#include <map>
-#include <filesystem>
-#include <chrono>
-#include <cmath>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cmath>
+#include <direct.h>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <regex>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <direct.h>
+#include <vector>
 
 // PROGRAM INFO
-#include <version.h>
 #include <Config.h>
+#include <version.h>

@@ -129,6 +129,7 @@ private:
 	GLuint _id;
 	glm::ivec2 _size;
 	int _channelsNum;
+	bool _init = false;
 
 	std::string _path;
 	bool _hdr;
@@ -157,6 +158,8 @@ public:
 	void SetWrapModeT(const TextureWrapMode& mode);
 	void SetMinFilterMode(const TextureFilterMode& mode);
 	void SetMagFilterMode(const TextureFilterMode& mode);
+
+	bool IsInit() const;
 
 	GLuint GetId() const;
 	glm::ivec2 GetSize() const;

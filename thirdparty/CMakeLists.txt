@@ -34,7 +34,19 @@ CPMAddPackage(
 CPMAddPackage("gh:gabime/spdlog@1.15.0")
 
 if(WINDOW_APP)
-    CPMAddPackage("gh:ocornut/imgui@1.91.6-docking")
+    # cgltf
+    set(CGLTF_DIR ${CMAKE_CURRENT_LIST_DIR}/cgltf)
+    set(cgltf_SOURCE_DIR ${CGLTF_DIR} CACHE INTERNAL "")
+    add_library(cgltf STATIC ${CGLTF_DIR}/cgltf.cpp)
+    target_include_directories(cgltf PRIVATE ${CGLTF_DIR})
+
+    # tiny_obj_loader
+    set(TINY_OBJ_LOADER_DIR ${CMAKE_CURRENT_LIST_DIR}/tiny_obj_loader)
+    set(tiny_obj_loader_SOURCE_DIR ${TINY_OBJ_LOADER_DIR} CACHE INTERNAL "")
+    add_library(tiny_obj_loader STATIC ${TINY_OBJ_LOADER_DIR}/tiny_obj_loader.cpp)
+    target_include_directories(tiny_obj_loader PRIVATE ${TINY_OBJ_LOADER_DIR})
+
+    CPMAddPackage("gh:ocornut/imgui@1.91.7-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
     add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
@@ -43,7 +55,9 @@ if(WINDOW_APP)
 						     ${imgui_SOURCE_DIR}/imgui_tables.cpp
 					         ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
     
-    set_target_properties(imgui PROPERTIES FOLDER "thirdparty")
+    set_target_properties(imgui
+                          cgltf 
+                          tiny_obj_loader PROPERTIES FOLDER "thirdparty")
 endif()
 
 set_target_properties(glad
