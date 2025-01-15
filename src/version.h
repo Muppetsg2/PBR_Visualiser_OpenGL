@@ -49,7 +49,6 @@
 // - added button to load own 3d object file to visualiser in window build. Supported formats: .glb, .gltf, .obj. (.glb, .gltf and .obj must contain meshes composed of triangles and at least information about Position, Normal, TexCoords)
 // - added information about model filename in window build
 // - added two models (watch and lamp) in 3 formats (.obj, .glb and .glft + .bin)
-// - fixed bug when loading GLTF object with more than one primitive or shape
 // - added information about skybox file/folder name in window build
 // - updated ImGui to 1.91.7-docking version
 // - optimized rendering in console mode by not drawing skybox
