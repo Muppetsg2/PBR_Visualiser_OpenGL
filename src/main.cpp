@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.0
+// Version: 1.3.1
 // Author: Marceli Antosik
-// Last Update: 15.01.2025
+// Last Update: 16.01.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -25,12 +25,7 @@ extern "C" {
 #include <ModelLoader.h>
 #endif
 
-#if _DEBUG
-static void glfw_error_callback(int error, const char* description)
-{
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
-}
-
+#if WINDOW_APP && _DEBUG
 static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
     //if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return; // Chce ignorowac notyfikacje
@@ -59,7 +54,57 @@ static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint i
         SPDLOG_WARN("GL CALLBACK: type = {0}, severity = {1}, message = {2}", typeS, severityS, message);
     }
 }
+#elif WINDOW_APP && !_DEBUG
+static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+    if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+
+    std::string severityS = "";
+    if (severity == GL_DEBUG_SEVERITY_HIGH) severityS = "HIGHT";
+    else if (severity == GL_DEBUG_SEVERITY_MEDIUM) severityS = "MEDIUM";
+    else if (severity == GL_DEBUG_SEVERITY_LOW) severityS = "LOW";
+    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) severityS = "NOTIFICATION";
+
+    if (type == GL_DEBUG_TYPE_ERROR) {
+        SPDLOG_ERROR("GL CALLBACK: type = ERROR, severity = {0}, message = {1}\n", severityS, message);
+    }
+}
+#elif !WINDOW_APP
+static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+    std::string severityS = "";
+    if (severity == GL_DEBUG_SEVERITY_HIGH) severityS = "HIGHT";
+    else if (severity == GL_DEBUG_SEVERITY_MEDIUM) severityS = "MEDIUM";
+    else if (severity == GL_DEBUG_SEVERITY_LOW) severityS = "LOW";
+    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && Config::isVerbose()) severityS = "NOTIFICATION";
+    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && !Config::isVerbose()) return;
+
+    if (type == GL_DEBUG_TYPE_ERROR) {
+        SPDLOG_ERROR("GL CALLBACK: type = ERROR, severity = {0}, message = {1}\n", severityS, message);
+    }
+    else if (type == GL_DEBUG_TYPE_MARKER) {
+        if (!Config::isVerbose()) return;
+        SPDLOG_INFO("GL CALLBACK: type = MARKER, severity = {0}, message = {1}\n", severityS, message);
+    }
+    else {
+        if (!Config::isVerbose()) return;
+        std::string typeS = "";
+        if (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) typeS = "DEPRACTED BEHAVIOUR";
+        else if (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR) typeS = "UNDEFINED BEHAVIOUR";
+        else if (type == GL_DEBUG_TYPE_PORTABILITY) typeS = "PORTABILITY";
+        else if (type == GL_DEBUG_TYPE_PERFORMANCE) typeS = "PERFORMANCE";
+        else if (type == GL_DEBUG_TYPE_PUSH_GROUP) typeS = "PUSH GROUP";
+        else if (type == GL_DEBUG_TYPE_POP_GROUP) typeS = "POP GROUP";
+        else if (type == GL_DEBUG_TYPE_OTHER) typeS = "OTHER";
+        SPDLOG_WARN("GL CALLBACK: type = {0}, severity = {1}, message = {2}", typeS, severityS, message);
+    }
+}
 #endif
+
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 
 static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -454,9 +499,7 @@ int main(int argc, char** argv)
 bool init()
 {
     // Setup window
-#if _DEBUG
     glfwSetErrorCallback(glfw_error_callback);
-#endif
 
     if (!glfwInit()) 
     {
@@ -499,11 +542,9 @@ bool init()
 
     if (Config::isVerbose()) spdlog::info("Successfully initialized OpenGL loader!");
 
-#if _DEBUG
     // Debugging
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(ErrorMessageCallback, 0);
-#endif
 
     if (Config::isVerbose()) {
         const GLubyte* renderer = glGetString(GL_RENDERER);
