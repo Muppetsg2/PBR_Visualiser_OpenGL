@@ -11,9 +11,11 @@ ENUM_CLASS_BASE_VALUE(SkyboxDisplay, uint8_t, DEFAULT, 0, IRRADIANCE, 1, PREFILT
 
 class Skybox {
 private:
+#if WINDOW_APP
+    static Shader* _shader;
+#endif
     static GLuint _vao;
     static GLuint _texture;
-    static Shader* _shader;
 
     static GLuint _irradianceTexture;
     static GLuint _prefilterTexture;
@@ -50,11 +52,13 @@ private:
     static bool LoadSavedDataToChange(std::string dir, bool isDiffrent);
 
 public:
-    static void Init(glm::ivec2 window_size, const GLchar* faces[6]);
-    static void Init(GLFWwindow* window, const GLchar* faces[6]);
     static void Init(glm::ivec2 window_size, const GLchar* hdr);
     static void Init(GLFWwindow* window, const GLchar* hdr);
+#if WINDOW_APP
+    static void Init(glm::ivec2 window_size, const GLchar* faces[6]);
+    static void Init(GLFWwindow* window, const GLchar* faces[6]);
     static void Draw();
+#endif
     static void Deinit();
 
     static void UseTexture(unsigned int samplerId);

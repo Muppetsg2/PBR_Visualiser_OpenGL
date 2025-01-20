@@ -2,9 +2,9 @@
 
 #define PBR_VISUALISER_VER_MAJOR 1
 #define PBR_VISUALISER_VER_MINOR 3
-#define PBR_VISUALISER_VER_PATCH 1
+#define PBR_VISUALISER_VER_PATCH 2
 
-#define PBR_VISUALISER_LAST_UPDATE "16.01.2025"
+#define PBR_VISUALISER_LAST_UPDATE "20.01.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -26,6 +26,10 @@
 //  / /__/ _ \/ _ `/ _ \/ _ `/ -_) / _ \/ _ `/
 //  \___/_//_/\_,_/_//_/\_, /\__/_/\___/\_, / 
 //                     /___/           /___/  
+// 
+// --- 1.3.2 ---
+// - deleted skybox draw function in consol build
+// - deleted skybox.frag and skybox.vert from consol build
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode

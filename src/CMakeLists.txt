@@ -81,7 +81,7 @@ file(GLOB SHADER_FILES ${CMAKE_SOURCE_DIR}/res/shader/*)
 if (WINDOW_APP)
 	list(FILTER SHADER_FILES EXCLUDE REGEX ".*(basic2\.vert|basic2\.frag).*")
 else()
-	list(FILTER SHADER_FILES EXCLUDE REGEX ".*(basic\.vert|basic\.frag|screen\.vert|screen\.frag).*")
+	list(FILTER SHADER_FILES EXCLUDE REGEX ".*(basic\.vert|basic\.frag|screen\.vert|screen\.frag|skybox\.vert|skybox\.frag).*")
 endif()
 
 string(REPLACE ";" " " SHADER_FILES_STR "${SHADER_FILES}")
