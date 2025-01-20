@@ -502,7 +502,7 @@ bool Skybox::LoadSavedData(std::string dir)
 	return true;
 }
 
-bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
+bool Skybox::LoadSavedDataToChange(std::string dir)
 {
 	gli::texture_cube texCube = (gli::texture_cube)gli::load_dds(dir + "\\cubemap.dds");
 	if (texCube.empty()) {
@@ -513,10 +513,8 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 	gli::gl GL(gli::gl::PROFILE_GL33);
 	gli::gl::format Format = GL.translate(texCube.format(), texCube.swizzles());
 
-	if (isDiffrent) {
-		glDeleteTextures(1, &Skybox::_texture);
-		glGenTextures(1, &Skybox::_texture);
-	}
+	glDeleteTextures(1, &Skybox::_texture);
+	glGenTextures(1, &Skybox::_texture);
 
 	GLenum target = GL.translate(texCube.target());
 	glBindTexture(target, Skybox::_texture);
@@ -549,7 +547,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 
 	glBindTexture(target, 0);
 
-	spdlog::info("Cubemap Texture loaded!");
+	if (Config::isVerbose()) spdlog::info("Cubemap Texture loaded!");
 
 	texCube.clear();
 
@@ -561,6 +559,9 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 	}
 
 	Format = GL.translate(texCube.format(), texCube.swizzles());
+
+	glDeleteTextures(1, &Skybox::_irradianceTexture);
+	glGenTextures(1, &Skybox::_irradianceTexture);
 
 	target = GL.translate(texCube.target());
 	glBindTexture(target, Skybox::_irradianceTexture);
@@ -583,7 +584,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 
 	glBindTexture(target, 0);
 
-	spdlog::info("Irradiance Texture loaded!");
+	if (Config::isVerbose()) spdlog::info("Irradiance Texture loaded!");
 
 	texCube.clear();
 
@@ -595,6 +596,9 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 	}
 
 	Format = GL.translate(texCube.format(), texCube.swizzles());
+
+	glDeleteTextures(1, &Skybox::_prefilterTexture);
+	glGenTextures(1, &Skybox::_prefilterTexture);
 
 	target = GL.translate(texCube.target());
 	glBindTexture(target, Skybox::_prefilterTexture);
@@ -621,7 +625,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir, bool isDiffrent)
 
 	glBindTexture(target, 0);
 
-	spdlog::info("Prefilter Texture loaded!");
+	if (Config::isVerbose()) spdlog::info("Prefilter Texture loaded!");
 
 	for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 
@@ -1615,6 +1619,11 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
+	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_paths[0]) {
+		if (Config::isVerbose()) spdlog::info("Skybox already loaded!");
+		return;
+	}
+
 #if WINDOW_APP
 	if (Skybox::_shader == nullptr) {
 		Skybox::_shader = Shader::FromExtractor("skybox.vert", "skybox.frag");
@@ -1632,6 +1641,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 
 	bool oldHDR = Skybox::_hdr;
 
+
 	if (!oldHDR) {
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 
@@ -1644,7 +1654,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
-		if (Skybox::LoadSavedDataToChange(res.second, oldHDR != Skybox::_hdr)) return;
+		if (Skybox::LoadSavedDataToChange(res.second)) return;
 
 		Skybox::_paths[0].clear();
 
@@ -1970,7 +1980,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
-		if (Skybox::LoadSavedDataToChange(res.second, oldHDR != Skybox::_hdr)) return;
+		if (Skybox::LoadSavedDataToChange(res.second)) return;
 
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 		return;
@@ -2230,7 +2240,7 @@ void Skybox::DrawEditor(bool* open)
 		if (ImGui::FileDialog(&Skybox::_openImageDialogs[7], &Skybox::_imageDialogInfos[7]))
 		{
 			Skybox::_fromData = true;
-			LoadSavedDataToChange(Skybox::_imageDialogInfos[7].resultPath.string(), true);
+			LoadSavedDataToChange(Skybox::_imageDialogInfos[7].resultPath.string());
 		}
 	}
 

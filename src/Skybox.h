@@ -49,7 +49,7 @@ private:
     static std::pair<bool, std::string> CheckFolder();
     static void SaveData(std::string dir);
     static bool LoadSavedData(std::string dir);
-    static bool LoadSavedDataToChange(std::string dir, bool isDiffrent);
+    static bool LoadSavedDataToChange(std::string dir);
 
 public:
     static void Init(glm::ivec2 window_size, const GLchar* hdr);

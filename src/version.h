@@ -28,8 +28,9 @@
 //                     /___/           /___/  
 // 
 // --- 1.3.2 ---
-// - deleted skybox draw function in consol build
-// - deleted skybox.frag and skybox.vert from consol build
+// - deleted skybox draw function in console build
+// - deleted skybox.frag and skybox.vert from console build
+// - fixed bug with changing skybox texture in console build
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode
