@@ -1,0 +1,7 @@
+do budowania:
+openssl
+cmake >= 3.29
+git
+
+do uruchomienia:
+opengl >= 4.5
