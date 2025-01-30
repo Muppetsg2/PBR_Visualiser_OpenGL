@@ -1,58 +1,88 @@
 ﻿{
-  "configurations": [
-    {
-      "name": "x64-Window",
-      "generator": "Ninja",
-      "configurationType": "Release",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": [
+    "configurations": [
         {
-          "name": "WINDOW_APP",
-          "value": "True",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x64-Window-Debug",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": [
+            "name": "x64-Window",
+            "generator": "Ninja",
+            "configurationType": "Release",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                {
+                    "name": "WINDOW_APP",
+                    "value": "True",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "USE_MSVC_RUNTIME_LIBRARY_DLL",
+                    "value": "False",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "SPDLOG_ENABLE_PCH",
+                    "value": "True",
+                    "type": "BOOL"
+                }
+            ]
+        },
         {
-          "name": "WINDOW_APP",
-          "value": "True",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x64-Console",
-      "generator": "Ninja",
-      "configurationType": "Release",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": [
+            "name": "x64-Window-Debug",
+            "generator": "Ninja",
+            "configurationType": "Debug",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                {
+                    "name": "WINDOW_APP",
+                    "value": "True",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "USE_MSVC_RUNTIME_LIBRARY_DLL",
+                    "value": "False",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "SPDLOG_ENABLE_PCH",
+                    "value": "True",
+                    "type": "BOOL"
+                }
+            ]
+        },
         {
-          "name": "WINDOW_APP",
-          "value": "False",
-          "type": "BOOL"
+            "name": "x64-Console",
+            "generator": "Ninja",
+            "configurationType": "Release",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+                {
+                    "name": "WINDOW_APP",
+                    "value": "False",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "USE_MSVC_RUNTIME_LIBRARY_DLL",
+                    "value": "False",
+                    "type": "BOOL"
+                },
+                {
+                    "name": "SPDLOG_ENABLE_PCH",
+                    "value": "True",
+                    "type": "BOOL"
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }

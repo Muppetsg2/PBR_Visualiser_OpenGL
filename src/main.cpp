@@ -6,7 +6,7 @@
 //
 // Version: 1.3.2
 // Author: Marceli Antosik
-// Last Update: 20.01.2025
+// Last Update: 31.01.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
