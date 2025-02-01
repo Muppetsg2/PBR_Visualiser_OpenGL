@@ -1,5 +1,8 @@
 #pragma once
+
+#if WINDOW_APP
 #include <Shader.h>
+#endif
 
 class Camera {
 private:

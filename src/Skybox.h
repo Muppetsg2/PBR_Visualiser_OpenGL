@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Shader.h>
 #if WINDOW_APP
+#include <Shader.h>
 #include <macros.h>
 #endif
 

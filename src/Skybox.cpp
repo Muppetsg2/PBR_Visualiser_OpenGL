@@ -4,6 +4,8 @@
 #include <Texture2D.h>
 
 Shader* Skybox::_shader = nullptr;
+#else
+#include <Shader.h>
 #endif
 GLuint Skybox::_vao = 0;
 GLuint Skybox::_texture = 0;
@@ -1472,7 +1474,7 @@ void Skybox::Draw()
 	Skybox::_shader->SetInt("skybox", 0);
 	Skybox::_shader->SetFloat("exposure", _exposure);
 	Skybox::_shader->SetFloat("colorIntensity", _colorIntensity);
-#if WINDOW_APP
+
 	switch (Skybox::_displayMode) {
 		case SkyboxDisplay::DEFAULT: {
 			Skybox::_shader->SetBool("withMipmap", true);
@@ -1491,13 +1493,9 @@ void Skybox::Draw()
 			break;
 		}
 	}
-#else
-	Skybox::_shader->SetBool("withMipmap", false);
-	Skybox::_shader->SetFloat("mipmap", 0.0);
-#endif
 	glBindVertexArray(Skybox::_vao);
 	glActiveTexture(GL_TEXTURE0);
-#if WINDOW_APP
+
 	switch (Skybox::_displayMode) {
 		case SkyboxDisplay::IRRADIANCE: {
 			glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
@@ -1513,9 +1511,6 @@ void Skybox::Draw()
 			break;
 		}
 	}
-#else
-	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
-#endif
 	glDrawElements(GL_TRIANGLES, Shape::GetCubeIndicesCount(), GL_UNSIGNED_INT, (void*)Shape::GetCubeIndices());
 	glBindVertexArray(0);
 }

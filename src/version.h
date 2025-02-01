@@ -4,7 +4,7 @@
 #define PBR_VISUALISER_VER_MINOR 3
 #define PBR_VISUALISER_VER_PATCH 2
 
-#define PBR_VISUALISER_LAST_UPDATE "31.01.2025"
+#define PBR_VISUALISER_LAST_UPDATE "1.02.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -31,6 +31,11 @@
 // - deleted skybox draw function in console build
 // - deleted skybox.frag and skybox.vert from console build
 // - fixed bug with changing skybox texture in console build
+// - updated spdlog to 1.15.1
+// - updated ImGui to 1.91.8-docking version
+// - updated cgltf
+// - updated tiny_obj_loader
+// - deleted chrono lib from console build and iostream lib from window build
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode

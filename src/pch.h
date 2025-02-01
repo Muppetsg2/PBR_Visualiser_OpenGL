@@ -42,20 +42,23 @@
 // LIBs
 #include <algorithm>
 #include <cctype>
-#include <chrono>
 #include <cmath>
 #include <direct.h>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <iostream>
 #include <map>
-#include <memory>
 #include <regex>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <vector>
+
+#if WINDOW_APP
+#include <chrono>
+#else
+#include <iostream>
+#endif
 
 // PROGRAM INFO
 #include <Config.h>

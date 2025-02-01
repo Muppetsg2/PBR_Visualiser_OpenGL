@@ -31,7 +31,7 @@ CPMAddPackage(
   GIT_REPOSITORY https://github.com/g-truc/gli.git
   GIT_TAG master
 )
-CPMAddPackage("gh:gabime/spdlog@1.15.0")
+CPMAddPackage("gh:gabime/spdlog@1.15.1")
 
 if(WINDOW_APP)
     # cgltf
@@ -46,7 +46,7 @@ if(WINDOW_APP)
     add_library(tiny_obj_loader STATIC ${TINY_OBJ_LOADER_DIR}/tiny_obj_loader.cpp)
     target_include_directories(tiny_obj_loader PRIVATE ${TINY_OBJ_LOADER_DIR})
 
-    CPMAddPackage("gh:ocornut/imgui@1.91.7-docking")
+    CPMAddPackage("gh:ocornut/imgui@1.91.8-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
     add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp

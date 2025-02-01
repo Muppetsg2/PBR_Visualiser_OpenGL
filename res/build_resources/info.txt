@@ -1,3 +1,0 @@
-vcruntime140_1.dll Version: 14.27.29111.0
-vcruntime140.dll   Version: 14.28.29115.0
-msvcp140.dll       Version: 14.26.28804.1
