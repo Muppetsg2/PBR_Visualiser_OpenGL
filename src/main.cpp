@@ -6,7 +6,7 @@
 //
 // Version: 1.3.2
 // Author: Marceli Antosik
-// Last Update: 1.02.2025
+// Last Update: 2.02.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -76,18 +76,18 @@ static void GLAPIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint i
     if (severity == GL_DEBUG_SEVERITY_HIGH) severityS = "HIGHT";
     else if (severity == GL_DEBUG_SEVERITY_MEDIUM) severityS = "MEDIUM";
     else if (severity == GL_DEBUG_SEVERITY_LOW) severityS = "LOW";
-    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && Config::isVerbose()) severityS = "NOTIFICATION";
-    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && !Config::isVerbose()) return;
+    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && Config::IsVerbose()) severityS = "NOTIFICATION";
+    else if (severity == GL_DEBUG_SEVERITY_NOTIFICATION && !Config::IsVerbose()) return;
 
     if (type == GL_DEBUG_TYPE_ERROR) {
         SPDLOG_ERROR("GL CALLBACK: type = ERROR, severity = {0}, message = {1}\n", severityS, message);
     }
     else if (type == GL_DEBUG_TYPE_MARKER) {
-        if (!Config::isVerbose()) return;
+        if (!Config::IsVerbose()) return;
         SPDLOG_INFO("GL CALLBACK: type = MARKER, severity = {0}, message = {1}\n", severityS, message);
     }
     else {
-        if (!Config::isVerbose()) return;
+        if (!Config::IsVerbose()) return;
         std::string typeS = "";
         if (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) typeS = "DEPRACTED BEHAVIOUR";
         else if (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR) typeS = "UNDEFINED BEHAVIOUR";
@@ -329,10 +329,10 @@ int main(int argc, char** argv)
                 expectIntensity = true;
             }
             else if (arg == "-v") {
-                Config::setVerbose(true);
+                Config::SetVerbose(true);
             }
             else if (arg == "-I") {
-                Config::setInteractive(true);
+                Config::SetInteractive(true);
             }
             else {
                 spdlog::warn("Unknown argument: {}", arg);
@@ -369,7 +369,7 @@ int main(int argc, char** argv)
 
     interpretResolutionValue(resolution);
 
-    if (!Config::isInteractive()) spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
+    if (!Config::IsInteractive()) spdlog::info("Resolution: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
 #endif
 
     if (!init())
@@ -378,7 +378,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (Config::isVerbose()) spdlog::info("Initialized project.");
+    if (Config::IsVerbose()) spdlog::info("Initialized project.");
 
 #if WINDOW_APP
     init_imgui();
@@ -393,11 +393,11 @@ int main(int argc, char** argv)
     Skybox::Init(window, std::string(exeDirPath + "\\res\\skybox\\rooitou_park_4k.hdr").c_str());
 #else
 
-    if (!Config::isInteractive()) spdlog::info("Skybox: {}", to_string(sky));
+    if (!Config::IsInteractive()) spdlog::info("Skybox: {}", to_string(sky));
 
     Skybox::Init(window, interpretSkyValue(sky).c_str());
 
-    if (!Config::isInteractive()) {
+    if (!Config::IsInteractive()) {
         interpretFileValues(imgPaths);
         imgPaths.clear();
     }
@@ -423,9 +423,9 @@ int main(int argc, char** argv)
 #else
     interpretPositionValue(position);
 
-    if (!Config::isInteractive()) spdlog::info("Position: {}", to_string(position));
-    if (!Config::isInteractive()) spdlog::info("Exposure: {}", exposure);
-    if (!Config::isInteractive()) spdlog::info("Color Intensity: {}", colorIntensity);
+    if (!Config::IsInteractive()) spdlog::info("Position: {}", to_string(position));
+    if (!Config::IsInteractive()) spdlog::info("Exposure: {}", exposure);
+    if (!Config::IsInteractive()) spdlog::info("Color Intensity: {}", colorIntensity);
 
 #endif
 
@@ -453,7 +453,7 @@ int main(int argc, char** argv)
         end_frame();
     }
 #else
-    if (Config::isInteractive()) {
+    if (Config::IsInteractive()) {
         interactiveModeLoop(fileName, saveDir, imgPaths, sky, position, resolution);
         spdlog::set_pattern("%+");
     }
@@ -507,7 +507,7 @@ bool init()
         return false;
     }
     
-    if (Config::isVerbose()) spdlog::info("Successfully initialized GLFW!");
+    if (Config::IsVerbose()) spdlog::info("Successfully initialized GLFW!");
 
     // GL 4.5 + GLSL 450
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_MAJOR);
@@ -526,7 +526,7 @@ bool init()
         return false;
     }
 
-    if (Config::isVerbose()) spdlog::info("Successfully created GLFW Window!");
+    if (Config::IsVerbose()) spdlog::info("Successfully created GLFW Window!");
 
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
@@ -540,13 +540,13 @@ bool init()
         return false;
     }
 
-    if (Config::isVerbose()) spdlog::info("Successfully initialized OpenGL loader!");
+    if (Config::IsVerbose()) spdlog::info("Successfully initialized OpenGL loader!");
 
     // Debugging
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(ErrorMessageCallback, 0);
 
-    if (Config::isVerbose()) {
+    if (Config::IsVerbose()) {
         const GLubyte* renderer = glGetString(GL_RENDERER);
         spdlog::info("Graphic Card: {0}", (char*)renderer);
     }

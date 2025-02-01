@@ -74,7 +74,7 @@ void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat&
 
 	_init = !err;
 
-	if (Config::isVerbose() && !err) spdlog::info("Texture at path '{}' loaded!", path);
+	if (Config::IsVerbose() && !err) spdlog::info("Texture at path '{}' loaded!", path);
 }
 
 Texture2D::Texture2D()

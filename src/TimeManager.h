@@ -5,7 +5,7 @@ private:
 	static float _updateDeltaTime;
 
 public:
-	static float _timeMultiplier;
+	static float timeMultiplier;
 	static void Update();
 	static float GetTime();
 	static float GetDeltaTime();

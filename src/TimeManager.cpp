@@ -1,7 +1,7 @@
 #include <TimeManager.h>
 
 float TimeManager::_updateDeltaTime = 0.f;
-float TimeManager::_timeMultiplier = 1.0f;
+float TimeManager::timeMultiplier = 1.0f;
 
 void TimeManager::Update()
 {
@@ -10,7 +10,7 @@ void TimeManager::Update()
 
 	t1 = t2;
 	t2 = glfwGetTime();
-	_updateDeltaTime = (t2 - t1) * _timeMultiplier;
+	_updateDeltaTime = (t2 - t1) * timeMultiplier;
 }
 
 float TimeManager::GetTime()

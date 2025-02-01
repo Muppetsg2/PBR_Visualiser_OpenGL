@@ -4,7 +4,7 @@
 #define PBR_VISUALISER_VER_MINOR 3
 #define PBR_VISUALISER_VER_PATCH 2
 
-#define PBR_VISUALISER_LAST_UPDATE "1.02.2025"
+#define PBR_VISUALISER_LAST_UPDATE "2.02.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -36,6 +36,8 @@
 // - updated cgltf
 // - updated tiny_obj_loader
 // - deleted chrono lib from console build and iostream lib from window build
+// - fixed attribute naming in Config class and TimeManager class
+// - fixed function naming in Config class
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode

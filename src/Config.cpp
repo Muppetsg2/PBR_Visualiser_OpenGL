@@ -1,34 +1,34 @@
 #include <Config.h>
 
 #if WINDOW_APP
-bool Config::verbose = true;
+bool Config::_verbose = true;
 #else
-bool Config::verbose = false;
-bool Config::interactive = false;
+bool Config::_verbose = false;
+bool Config::_interactive = false;
 #endif
 
-void Config::setVerbose(bool value)
+void Config::SetVerbose(bool value)
 {
-	Config::verbose = value;
-	spdlog::info("Verbose mode: {}", Config::verbose ? "true" : "false");
+	Config::_verbose = value;
+	spdlog::info("Verbose mode: {}", Config::_verbose ? "true" : "false");
 }
 
 #if !WINDOW_APP
-void Config::setInteractive(bool value)
+void Config::SetInteractive(bool value)
 {
-	Config::interactive = value;
-	spdlog::info("Interactive mode: {}", Config::interactive ? "true" : "false");
+	Config::_interactive = value;
+	spdlog::info("Interactive mode: {}", Config::_interactive ? "true" : "false");
 }
 #endif
 
-bool Config::isVerbose()
+bool Config::IsVerbose()
 {
-	return Config::verbose;
+	return Config::_verbose;
 }
 
 #if !WINDOW_APP
-bool Config::isInteractive()
+bool Config::IsInteractive()
 {
-	return Config::interactive;
+	return Config::_interactive;
 }
 #endif

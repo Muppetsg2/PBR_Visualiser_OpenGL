@@ -2,19 +2,19 @@
 
 class Config {
 private:
-    static bool verbose;
+    static bool _verbose;
 #if !WINDOW_APP
-    static bool interactive;
+    static bool _interactive;
 #endif
 
 public:
-    static void setVerbose(bool value);
+    static void SetVerbose(bool value);
 #if !WINDOW_APP
-    static void setInteractive(bool value);
+    static void SetInteractive(bool value);
 #endif
 
-    static bool isVerbose();
+    static bool IsVerbose();
 #if !WINDOW_APP
-    static bool isInteractive();
+    static bool IsInteractive();
 #endif
 };

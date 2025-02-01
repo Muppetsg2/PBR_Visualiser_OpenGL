@@ -122,7 +122,7 @@ std::pair<bool, std::string> Skybox::CheckFolder()
 
 void Skybox::SaveData(std::string dir)
 {
-	if (Config::isVerbose()) spdlog::info("Cubemap saving started!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap saving started!");
 
 	GLint width, height, maxMipLevel;
 
@@ -155,7 +155,7 @@ void Skybox::SaveData(std::string dir)
 		}
 
 		if (gli::save_dds(texCube, dir + "\\cubemap.dds")) {
-			if (Config::isVerbose()) spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
+			if (Config::IsVerbose()) spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
 		}
 		else {
 			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
@@ -235,7 +235,7 @@ void Skybox::SaveData(std::string dir)
 		}
 
 		if (gli::save_dds(texCube, dir + "\\cubemap.dds")) {
-			if (Config::isVerbose()) spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
+			if (Config::IsVerbose()) spdlog::info("File 'cubemap.dds' saved in directory '{}'", dir);
 		}
 		else {
 			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
@@ -261,7 +261,7 @@ void Skybox::SaveData(std::string dir)
 	}
 
 	if (gli::save_dds(texCube, dir + "\\irradiance.dds")) {
-		if (Config::isVerbose()) spdlog::info("File 'irradiance.dds' saved in directory '{}'", dir);
+		if (Config::IsVerbose()) spdlog::info("File 'irradiance.dds' saved in directory '{}'", dir);
 	}
 	else {
 		spdlog::error("There was an error while trying to save 'irradiance.dds' in directory '{}'", dir);
@@ -294,7 +294,7 @@ void Skybox::SaveData(std::string dir)
 	}
 
 	if (gli::save_dds(texCube, dir + "\\prefilter.dds")) {
-		if (Config::isVerbose()) spdlog::info("File 'prefilter.dds' saved in directory '{}'", dir);
+		if (Config::IsVerbose()) spdlog::info("File 'prefilter.dds' saved in directory '{}'", dir);
 	}
 	else {
 		spdlog::error("There was an error while trying to save 'prefilter.dds' in directory '{}'", dir);
@@ -316,7 +316,7 @@ void Skybox::SaveData(std::string dir)
 	int result = stbi_write_hdr(std::string(dir + "\\brdfLUT.hdr").c_str(), width, height, 2, data);
 
 	if (result != 0) {
-		if (Config::isVerbose()) spdlog::info("File 'brdfLUT.hdr' saved in directory '{}'", dir);
+		if (Config::IsVerbose()) spdlog::info("File 'brdfLUT.hdr' saved in directory '{}'", dir);
 	}
 	else {
 		spdlog::error("There was an error while trying to save 'brdfLUT.hdr' in directory '{}'", dir);
@@ -326,7 +326,7 @@ void Skybox::SaveData(std::string dir)
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	if (Config::isVerbose()) spdlog::info("Cubemap saving ended!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap saving ended!");
 }
 
 bool Skybox::LoadSavedData(std::string dir)
@@ -372,7 +372,7 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Cubemap Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap Texture loaded!");
 
 	texCube.clear();
 
@@ -410,7 +410,7 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture loaded!");
 
 	texCube.clear();
 
@@ -455,7 +455,7 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture loaded!");
 
 	int width, height, channels;
 	stbi_set_flip_vertically_on_load(true);
@@ -499,7 +499,7 @@ bool Skybox::LoadSavedData(std::string dir)
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	
-	if (Config::isVerbose()) spdlog::info("BRDFLut Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("BRDFLut Texture loaded!");
 
 	return true;
 }
@@ -549,7 +549,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Cubemap Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap Texture loaded!");
 
 	texCube.clear();
 
@@ -586,7 +586,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture loaded!");
 
 	texCube.clear();
 
@@ -627,7 +627,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 
 	glBindTexture(target, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture loaded!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture loaded!");
 
 	for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 
@@ -642,7 +642,7 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 {
 	if (Skybox::_init) {
-		if (Config::isVerbose()) spdlog::info("Skybox already initialized!");
+		if (Config::IsVerbose()) spdlog::info("Skybox already initialized!");
 		return;
 	}
 
@@ -663,7 +663,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
 #endif
 
 	Skybox::_windowSize = window_size;
@@ -711,7 +711,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 	bool isDir = false;
 
 	if (_mkdir(res.second.c_str()) == 0) {
-		if (Config::isVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
+		if (Config::IsVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
 		isDir = true;
 	}
 	else {
@@ -761,7 +761,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox equirectangular texture loaded at path: {}", hdr);
+	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular texture loaded at path: {}", hdr);
 
 	int size = 2048;
 
@@ -794,7 +794,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox equirectangular shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular shader initialized!");
 
 	Shader* irradianceShader = Shader::FromExtractor("equirectangular.vert", "irradiance.frag");
 
@@ -828,7 +828,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox irradiance shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
 
 	Shader* prefilterShader = Shader::FromExtractor("equirectangular.vert", "prefilter.frag");
 
@@ -865,7 +865,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox prefilter shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
 
 	// CUBEMAP
 	GLuint captureFBO = 0, captureRBO = 0;
@@ -928,7 +928,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = floor(log2(size));
 #endif
 
-	if (Config::isVerbose()) spdlog::info("Cubemap Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap Texture generated!");
 
 	// IRRADIANCE
 	//size / 16
@@ -969,7 +969,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		glBindVertexArray(0);
 	}
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture generated!");
 
 	// PREFILTER
 	int preSize = 512;
@@ -1024,7 +1024,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture generated!");
 
 	if (!GenerateBRDFLut(captureFBO, captureRBO))
 	{
@@ -1061,7 +1061,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("BRDFLut Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("BRDFLut Texture generated!");
 
 	glViewport(0, 0, window_size.x, window_size.y);
 	glCullFace(GL_BACK);
@@ -1081,7 +1081,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 void Skybox::Init(GLFWwindow* window, const GLchar* hdr)
 {
 	if (Skybox::_init) {
-		if (Config::isVerbose()) spdlog::info("Skybox already initialized!");
+		if (Config::IsVerbose()) spdlog::info("Skybox already initialized!");
 		return;
 	}
 
@@ -1102,7 +1102,7 @@ void Skybox::Init(GLFWwindow* window, const GLchar* hdr)
 void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 {
 	if (Skybox::_init) {
-		if (Config::isVerbose()) spdlog::info("Skybox already initialized!");
+		if (Config::IsVerbose()) spdlog::info("Skybox already initialized!");
 		return;
 	}
 
@@ -1117,7 +1117,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
 
 	Skybox::_windowSize = window_size;
 
@@ -1160,7 +1160,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 	bool isDir = false;
 
 	if (_mkdir(res.second.c_str()) == 0) {
-		if (Config::isVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
+		if (Config::IsVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
 		isDir = true;
 	}
 	else {
@@ -1187,7 +1187,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, inter, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 			stbi_image_free(data);
 
-			if (Config::isVerbose()) spdlog::info("Skybox texture loaded at path: {}", faces[i]);
+			if (Config::IsVerbose()) spdlog::info("Skybox texture loaded at path: {}", faces[i]);
 		}
 		else
 		{
@@ -1249,7 +1249,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox irradiance shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
 
 	Shader* prefilterShader = Shader::FromExtractor("equirectangular.vert", "prefilter.frag");
 
@@ -1279,7 +1279,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox prefilter shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
 
 	// IRRADIANCE
 	GLuint captureFBO = 0, captureRBO = 0;
@@ -1337,7 +1337,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 		glBindVertexArray(0);
 	}
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture generated!");
 
 	// PREFILTER
 	int preSize = 512;
@@ -1387,7 +1387,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture generated!");
 
 	if (!GenerateBRDFLut(captureFBO, captureRBO))
 	{
@@ -1426,7 +1426,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	if (Config::isVerbose()) spdlog::info("BRDFLut Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("BRDFLut Texture generated!");
 
 	glViewport(0, 0, window_size.x, window_size.y);
 	glCullFace(GL_BACK);
@@ -1444,7 +1444,7 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* faces[6])
 void Skybox::Init(GLFWwindow* window, const GLchar* faces[6])
 {
 	if (Skybox::_init) {
-		if (Config::isVerbose()) spdlog::info("Skybox already initialized!");
+		if (Config::IsVerbose()) spdlog::info("Skybox already initialized!");
 		return;
 	}
 
@@ -1615,7 +1615,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	}
 
 	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_paths[0]) {
-		if (Config::isVerbose()) spdlog::info("Skybox already loaded!");
+		if (Config::IsVerbose()) spdlog::info("Skybox already loaded!");
 		return;
 	}
 
@@ -1631,7 +1631,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
 #endif
 
 	bool oldHDR = Skybox::_hdr;
@@ -1661,7 +1661,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	bool isDir = false;
 
 	if (_mkdir(res.second.c_str()) == 0) {
-		if (Config::isVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
+		if (Config::IsVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
 		isDir = true;
 	}
 	else {
@@ -1700,7 +1700,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox equirectangular texture loaded at path: {}", hdr);
+	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular texture loaded at path: {}", hdr);
 
 	int size = 2048;
 
@@ -1722,7 +1722,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox equirectangular shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular shader initialized!");
 
 	Shader* irradianceShader = Shader::FromExtractor("equirectangular.vert", "irradiance.frag");
 
@@ -1745,7 +1745,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox irradiance shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
 
 	Shader* prefilterShader = Shader::FromExtractor("equirectangular.vert", "prefilter.frag");
 
@@ -1771,7 +1771,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox prefilter shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
 
 	// CUBEMAP
 	GLuint captureFBO = 0, captureRBO = 0;
@@ -1836,7 +1836,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = floor(log2(size));
 #endif
 
-	if (Config::isVerbose()) spdlog::info("Cubemap Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Cubemap Texture generated!");
 
 	// IRRADIANCE
 	//size / 16
@@ -1876,7 +1876,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		glBindVertexArray(0);
 	}
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture generated!");
 
 	// PREFILTER
 	int preSize = 512;
@@ -1930,7 +1930,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture generated!");
 
 	glViewport(0, 0, Skybox::_windowSize.x, Skybox::_windowSize.y);
 	glCullFace(GL_BACK);
@@ -1964,7 +1964,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
 
 	bool oldHDR = Skybox::_hdr;
 
@@ -1984,7 +1984,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 	bool isDir = false;
 
 	if (_mkdir(res.second.c_str()) == 0) {
-		if (Config::isVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
+		if (Config::IsVerbose()) spdlog::info("Directory '{}' has been created!", res.second);
 		isDir = true;
 	}
 	else {
@@ -2015,7 +2015,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, inter, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 			stbi_image_free(data);
 
-			if (Config::isVerbose()) spdlog::info("Skybox texture loaded at path: {}", Skybox::_paths[i]);
+			if (Config::IsVerbose()) spdlog::info("Skybox texture loaded at path: {}", Skybox::_paths[i]);
 		}
 		else
 		{
@@ -2053,7 +2053,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox irradiance shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
 
 	Shader* prefilterShader = Shader::FromExtractor("equirectangular.vert", "prefilter.frag");
 
@@ -2071,7 +2071,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		return;
 	}
 
-	if (Config::isVerbose()) spdlog::info("Skybox prefilter shader initialized!");
+	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
 
 	// IRRADIANCE
 	GLuint captureFBO = 0, captureRBO = 0;
@@ -2128,7 +2128,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		glBindVertexArray(0);
 	}
 
-	if (Config::isVerbose()) spdlog::info("Irradiance Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Irradiance Texture generated!");
 
 	// PREFILTER
 	int preSize = 512;
@@ -2178,7 +2178,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	if (Config::isVerbose()) spdlog::info("Prefilter Texture generated!");
+	if (Config::IsVerbose()) spdlog::info("Prefilter Texture generated!");
 
 	glViewport(0, 0, Skybox::_windowSize.x, Skybox::_windowSize.y);
 	glCullFace(GL_BACK);
