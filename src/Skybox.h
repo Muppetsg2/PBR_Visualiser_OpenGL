@@ -3,9 +3,7 @@
 #if WINDOW_APP
 #include <Shader.h>
 #include <macros.h>
-#endif
 
-#if WINDOW_APP
 ENUM_CLASS_BASE_VALUE(SkyboxDisplay, uint8_t, DEFAULT, 0, IRRADIANCE, 1, PREFILTER, 2)
 #endif
 
@@ -41,8 +39,7 @@ private:
     static GLFWwindow* _window;
     static glm::ivec2 _windowSize;
 
-    Skybox() = default;
-    virtual ~Skybox() = default;
+    Skybox() = delete;
 
     static bool GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer);
 

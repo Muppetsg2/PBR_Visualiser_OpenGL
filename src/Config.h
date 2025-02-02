@@ -6,6 +6,7 @@ private:
 #if !WINDOW_APP
     static bool _interactive;
 #endif
+    Config() = delete;
 
 public:
     static void SetVerbose(bool value);

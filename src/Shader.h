@@ -22,7 +22,6 @@ private:
     void LoadShaderFromExtractor(std::string vertName, std::string geomName, std::string fragName);
 
 public:
-
     Shader();
     Shader(const Shader&& shader) noexcept;
     Shader(const Shader& shader);
@@ -30,6 +29,9 @@ public:
     Shader(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
     Shader(GLuint programId, const GLchar* vertPath, const GLchar* fragPath);
     Shader(GLuint programId, const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
+
+    static Shader* FromFile(const GLchar* vertPath, const GLchar* fragPath);
+    static Shader* FromFile(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath);
 
     static Shader* FromExtractor(std::string vertName, std::string fragName);
     static Shader* FromExtractor(std::string vertName, std::string geomName, std::string fragName);

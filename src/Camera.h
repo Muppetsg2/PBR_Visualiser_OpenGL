@@ -33,6 +33,9 @@ private:
 	static glm::vec3 _position;
 	static glm::vec3 _rotation;
 
+	static GLFWwindow* _window;
+	static glm::ivec2 _windowSize;
+
 	static void SetFrontDir(glm::vec3 dir);
 	static void OnTransformChange();
 
@@ -40,8 +43,7 @@ private:
 	static bool InitFramebuffer();
 #endif
 
-	static GLFWwindow* _window;
-	static glm::ivec2 _windowSize;
+	Camera() = delete;
 
 public:
 	static void Init(glm::ivec2 window_size);

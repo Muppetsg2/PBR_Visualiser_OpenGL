@@ -38,6 +38,8 @@
 // - deleted chrono lib from console build and iostream lib from window build
 // - fixed attribute naming in Config class and TimeManager class
 // - fixed function naming in Config class
+// - added to shader static method to create shader from file
+// - deleted constructor in static classes
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode

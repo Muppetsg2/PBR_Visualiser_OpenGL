@@ -28,6 +28,8 @@ private:
 	static bool LoadModelFromGLTF(std::string path);
 	static bool LoadModelFromOBJ(std::string path);
 
+	ModelLoader() = delete;
+
 public:
 	static bool LoadModel(std::string path);
 

@@ -4,6 +4,8 @@ class TimeManager {
 private:
 	static float _updateDeltaTime;
 
+	TimeManager() = delete;
+
 public:
 	static float timeMultiplier;
 	static void Update();

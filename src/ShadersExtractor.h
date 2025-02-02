@@ -8,6 +8,8 @@ private:
 	static std::pair<bool, std::string> ReadAndDecodeFile(std::string filePath, std::string key);
 	static bool AddShader(std::string shaderCode);
 
+	ShadersExtractor() = delete;
+
 public:
 	static void Init(std::string dataPath);
 	static void Deinit();

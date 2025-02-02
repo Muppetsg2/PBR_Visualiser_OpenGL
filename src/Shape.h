@@ -38,10 +38,9 @@ private:
 	static GLuint _sphereEBO;
 #endif
 
-public:
-	Shape() = default;
-	~Shape() = default;
+	Shape() = delete;
 
+public:
 	// Get VBO
 	static GLuint GetCubeVBO() {
 		if (!_cubeInitialized) {

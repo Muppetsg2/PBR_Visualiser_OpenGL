@@ -426,6 +426,36 @@ Shader::Shader(GLuint programId, const GLchar* vertPath, const GLchar* geomPath,
     _init = true;
 }
 
+Shader* Shader::FromFile(const GLchar* vertPath, const GLchar* fragPath)
+{
+    Shader* res = new Shader();
+
+    res->LoadShaderFromFile(vertPath, fragPath);
+
+    if (!res->IsInitialized()) {
+        spdlog::error("ERROR::SHADER::CREATE::CREATION_FROM_FILE_FAILED");
+        delete res;
+        return nullptr;
+    }
+
+    return res;
+}
+
+Shader* Shader::FromFile(const GLchar* vertPath, const GLchar* geomPath, const GLchar* fragPath)
+{
+    Shader* res = new Shader();
+
+    res->LoadShaderFromFile(vertPath, geomPath, fragPath);
+
+    if (!res->IsInitialized()) {
+        spdlog::error("ERROR::SHADER::CREATE::CREATION_FROM_FILE_FAILED");
+        delete res;
+        return nullptr;
+    }
+
+    return res;
+}
+
 Shader* Shader::FromExtractor(std::string vertName, std::string fragName)
 {
     Shader* res = new Shader();
