@@ -6,7 +6,7 @@
 //
 // Version: 1.3.2
 // Author: Marceli Antosik
-// Last Update: 2.02.2025
+// Last Update: 7.02.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -969,6 +969,7 @@ void imgui_begin()
 void imgui_render()
 {
     static bool _skyboxOpen = true;
+    static bool _cameraOpen = true;
 
     if (!ImGui::Begin("PBR VISUALISER", nullptr, ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
@@ -976,9 +977,19 @@ void imgui_render()
     }
 
     if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Menu##Menu")) {
+            if (ImGui::MenuItem("Exit")) {
+                glfwSetWindowShouldClose(window, true);
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Windows##Menu")) {
-            if (ImGui::MenuItem("Skybox")) {
+            if (ImGui::MenuItem("Skybox", 0, &_skyboxOpen)) {
                 _skyboxOpen = true;
+            }
+            if (ImGui::MenuItem("Camera", 0, &_cameraOpen)) {
+                _cameraOpen = true;
             }
             ImGui::EndMenu();
         }
@@ -1117,6 +1128,7 @@ void imgui_render()
     ImGui::End();
 
     if (_skyboxOpen) Skybox::DrawEditor(&_skyboxOpen);
+    if (_cameraOpen) Camera::DrawEditor(&_cameraOpen);
 }
 
 void imgui_end()

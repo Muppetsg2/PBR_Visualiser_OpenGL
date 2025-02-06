@@ -10,6 +10,9 @@ GLuint Camera::_renderTexture = 0;
 GLuint Camera::_vao = 0;
 
 Shader* Camera::_renderShader = nullptr;
+
+float Camera::_pixelate = 1.0;
+CameraColorMode Camera::_colorMode = CameraColorMode::DEFAULT;
 #endif
 
 bool Camera::_init = false;
@@ -192,6 +195,8 @@ void Camera::Render()
 	glActiveTexture(GL_TEXTURE0 + 10);
 	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
 	Camera::_renderShader->SetInt("screenTexture", 10);
+	Camera::_renderShader->SetFloat("pixelate", Camera::_pixelate);
+	Camera::_renderShader->SetInt("mode", (int)(uint8_t)Camera::_colorMode);
 
 	glBindVertexArray(Camera::_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -308,6 +313,18 @@ float Camera::GetFarPlane()
 	return Camera::_far;
 }
 
+#if WINDOW_APP
+float Camera::GetPixelate()
+{
+	return Camera::_pixelate;
+}
+
+CameraColorMode Camera::GetColorMode()
+{
+	return Camera::_colorMode;
+}
+#endif
+
 glm::vec3 Camera::GetFrontDir()
 {
 	return Camera::_front;
@@ -385,3 +402,45 @@ void Camera::SetWorldUp(glm::vec3 value)
 	Camera::_right = glm::normalize(glm::cross(Camera::_front, Camera::_worldUp));
 	Camera::_up = glm::normalize(glm::cross(Camera::_right, Camera::_front));
 }
+
+#if WINDOW_APP
+void Camera::SetPixelate(float value)
+{
+	Camera::_pixelate = std::max(value, 1.0f);
+}
+
+void Camera::SetColorMode(CameraColorMode mode)
+{
+	Camera::_colorMode = mode;
+}
+
+void Camera::DrawEditor(bool* open)
+{
+	if (!ImGui::Begin("Camera", open)) {
+		ImGui::End();
+		return;
+	}
+
+	if (ImGui::BeginCombo("Color Mode", to_string(Camera::_colorMode).c_str()))
+	{
+		for (size_t i = 0; i < size<CameraColorMode>(); ++i) {
+			CameraColorMode acc = (CameraColorMode)i;
+			if (ImGui::Selectable(to_string(acc).c_str(), Camera::_colorMode == acc))
+			{
+				Camera::SetColorMode(acc);
+				break;
+			}
+		}
+		ImGui::EndCombo();
+	}
+
+	float value = Camera::_pixelate;
+	ImGui::DragFloat("Pixelate", &value, 1.0f, 1.0f, FLT_MAX, "%.1f");
+
+	if (Camera::_pixelate != value) {
+		Camera::SetPixelate(value);
+	}
+
+	ImGui::End();
+}
+#endif

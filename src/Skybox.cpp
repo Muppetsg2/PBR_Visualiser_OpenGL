@@ -15,7 +15,6 @@ GLuint Skybox::_prefilterTexture = 0;
 GLuint Skybox::_brdfLUTTexture = 0;
 
 bool Skybox::_init = false;
-bool Skybox::_hdr = false;
 
 float Skybox::_exposure = 1.0f;
 float Skybox::_colorIntensity = 1.0f;
@@ -24,12 +23,16 @@ float Skybox::_colorIntensity = 1.0f;
 SkyboxDisplay Skybox::_displayMode = SkyboxDisplay::DEFAULT;
 float Skybox::_mipmapLevel = 0.0f;
 float Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = 0.f;
+bool Skybox::_hdr = false;
 bool Skybox::_fromData = false;
 bool Skybox::_openImageDialogs[8] = { false, false, false, false, false, false, false, false };
 ImFileDialogInfo Skybox::_imageDialogInfos[8];
-#endif
 
 std::string Skybox::_paths[6] = { "", "", "", "", "", "" };
+#else
+std::string Skybox::_path = "";
+#endif
+
 GLFWwindow* Skybox::_window = nullptr;
 glm::ivec2 Skybox::_windowSize = glm::ivec2();
 
@@ -97,6 +100,7 @@ bool Skybox::GenerateBRDFLut(GLuint framebuffer, GLuint renderbuffer)
 
 std::pair<bool, std::string> Skybox::CheckFolder()
 {
+#if WINDOW_APP
 	std::string path = std::filesystem::absolute(Skybox::_paths[0]).string();
 
 	std::string name;
@@ -108,6 +112,10 @@ std::pair<bool, std::string> Skybox::CheckFolder()
 		name = path.substr(0, path.find_last_of("\\/"));
 		name = name.substr(name.find_last_of("\\/") + 1).append("_data");
 	}
+#else
+	std::string path = std::filesystem::absolute(Skybox::_path).string();
+	std::string name = std::filesystem::path(path).filename().replace_extension("").string().append("_data");
+#endif
 	std::string folderPath = path.substr(0, path.find_last_of("\\/") + 1).append(name);
 
 	struct stat info;
@@ -126,8 +134,9 @@ void Skybox::SaveData(std::string dir)
 
 	GLint width, height, maxMipLevel;
 
+#if WINDOW_APP
 	if (Skybox::_hdr) {
-
+#endif
 		// Save Cubemap
 		glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 		glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
@@ -160,6 +169,7 @@ void Skybox::SaveData(std::string dir)
 		else {
 			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
 		}
+#if WINDOW_APP
 	}
 	else
 	{
@@ -241,13 +251,18 @@ void Skybox::SaveData(std::string dir)
 			spdlog::error("There was an error while trying to save 'cubemap.dds' in directory '{}'", dir);
 		}
 	}
+#endif
 
 	// Save IRRADIANCE
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_HEIGHT, &height);
 
+#if WINDOW_APP
 	gli::texture_cube texCube = gli::texture_cube(gli::FORMAT_RGB32_SFLOAT_PACK32, gli::extent3d(width, height, 1), 1);
+#else
+	texCube = gli::texture_cube(gli::FORMAT_RGB32_SFLOAT_PACK32, gli::extent3d(width, height, 1), 1);
+#endif
 
 	for (int face = 0; face < 6; ++face) {
 		std::vector<float> mipData(width * height * 3); // GL_RGB32F
@@ -347,14 +362,13 @@ bool Skybox::LoadSavedData(std::string dir)
 	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, (GLint)(texCube.levels() - 1));
 
-#if WINDOW_APP
-	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = texCube.levels() - 1;
-#endif
-
 	gli::ivec2 extent = texCube.extent();
 	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
 
+#if WINDOW_APP
+	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = texCube.levels() - 1;
 	Skybox::_hdr = GL_RGB32F == (int)Format.Internal;
+#endif
 
 	for (std::size_t face = 0; face < texCube.faces(); ++face) {
 		for (std::size_t level = 0; level < texCube.levels(); ++level) {
@@ -524,14 +538,13 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 	glTexParameteri(target, GL_TEXTURE_BASE_LEVEL, 0);
 	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, (GLint)(texCube.levels() - 1));
 
-#if WINDOW_APP
-	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = texCube.levels() - 1;
-#endif
-
 	gli::ivec2 extent = texCube.extent();
 	glTexStorage2D(target, (GLint)texCube.levels(), Format.Internal, extent.x, extent.y);
 
+#if WINDOW_APP
+	Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = texCube.levels() - 1;
 	Skybox::_hdr = GL_RGB32F == (int)Format.Internal;
+#endif
 
 	for (std::size_t face = 0; face < texCube.faces(); ++face) {
 		for (std::size_t level = 0; level < texCube.levels(); ++level) {
@@ -629,13 +642,16 @@ bool Skybox::LoadSavedDataToChange(std::string dir)
 
 	if (Config::IsVerbose()) spdlog::info("Prefilter Texture loaded!");
 
+#if WINDOW_APP
 	for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
-
 	Skybox::_paths[0] = dir;
 
-#if WINDOW_APP
 	Skybox::_fromData = true;
+#else
+	Skybox::_path.clear();
+	Skybox::_path = dir;
 #endif
+
 	return true;
 }
 
@@ -682,18 +698,24 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
+#if WINDOW_APP
 	Skybox::_hdr = true;
-
 	Skybox::_paths[0] = hdr;
+#else
+	Skybox::_path = hdr;
+#endif
 
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
 		if (Skybox::LoadSavedData(res.second)) Skybox::_init = true; return;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -742,9 +764,12 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 	{
 		stbi_image_free(data);
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -775,9 +800,12 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -809,9 +837,12 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -846,9 +877,12 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -1037,9 +1071,12 @@ void Skybox::Init(glm::ivec2 window_size, const GLchar* hdr)
 
 		glDeleteTextures(1, &hdrTexture);
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		glDeleteVertexArrays(1, &Skybox::_vao);
 		Skybox::_vao = 0;
@@ -1614,12 +1651,12 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		return;
 	}
 
+#if WINDOW_APP
 	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_paths[0]) {
 		if (Config::IsVerbose()) spdlog::info("Skybox already loaded!");
 		return;
 	}
 
-#if WINDOW_APP
 	if (Skybox::_shader == nullptr) {
 		Skybox::_shader = Shader::FromExtractor("skybox.vert", "skybox.frag");
 	}
@@ -1632,10 +1669,8 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
-#endif
-
+	
 	bool oldHDR = Skybox::_hdr;
-
 
 	if (!oldHDR) {
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
@@ -1645,16 +1680,25 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 
 	Skybox::_hdr = true;
 	Skybox::_paths[0] = hdr;
+#else
+	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_path) {
+		if (Config::IsVerbose()) spdlog::info("Skybox already loaded!");
+		return;
+	}
+
+	Skybox::_path = hdr;
+#endif
 
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
 		if (Skybox::LoadSavedDataToChange(res.second)) return;
-
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
-
+#else
+		Skybox::_path.clear();
+#endif
 		return;
 	}
 
@@ -1692,9 +1736,12 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	{
 		stbi_image_free(data);
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		spdlog::error("Skybox equirectangular texture failed to load at path: {}", hdr);
 		return;
@@ -1714,9 +1761,12 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		spdlog::error("Skybox equirectangular shader could not be initialized!");
 		return;
@@ -1737,9 +1787,12 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		spdlog::error("Skybox irradiance shader could not be initialized!");
 		return;
@@ -1763,9 +1816,12 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		glDeleteTextures(1, &hdrTexture);
 		hdrTexture = 0;
 
+#if WINDOW_APP
 		Skybox::_paths[0].clear();
-
 		Skybox::_hdr = false;
+#else
+		Skybox::_path.clear();
+#endif
 
 		spdlog::error("Skybox prefilter shader could not be initialized!");
 		return;
@@ -1783,6 +1839,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
+#if WINDOW_APP
 	if (!oldHDR) glGenTextures(1, &Skybox::_texture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 	if (!oldHDR) {
@@ -1791,6 +1848,9 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
 		}
 	}
+#else
+	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
+#endif
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);

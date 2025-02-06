@@ -2,6 +2,10 @@
 
 #if WINDOW_APP
 #include <Shader.h>
+
+#include <macros.h>
+
+ENUM_CLASS_BASE_VALUE(CameraColorMode, uint8_t, DEFAULT, 0, NEGATIVE, 1, GRAYSCALE, 2)
 #endif
 
 class Camera {
@@ -16,6 +20,9 @@ private:
 	static GLuint _vao;
 
 	static Shader* _renderShader;
+
+	static float _pixelate;
+	static CameraColorMode _colorMode;
 #endif
 
 	static bool _init;
@@ -66,6 +73,10 @@ public:
 	static float GetFOV();
 	static float GetNearPlane();
 	static float GetFarPlane();
+#if WINDOW_APP
+	static float GetPixelate();
+	static CameraColorMode GetColorMode();
+#endif
 	static glm::vec3 GetFrontDir();
 	static glm::vec3 GetWorldUp();
 	static glm::vec3 GetRight();
@@ -80,4 +91,10 @@ public:
 	static void SetFarPlane(float value);
 	static void SetNearPlane(float value);
 	static void SetWorldUp(glm::vec3 value);
+#if WINDOW_APP
+	static void SetPixelate(float value);
+	static void SetColorMode(CameraColorMode mode);
+
+	static void DrawEditor(bool* open);
+#endif
 };

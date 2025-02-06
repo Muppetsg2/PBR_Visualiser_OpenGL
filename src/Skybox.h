@@ -20,7 +20,6 @@ private:
     static GLuint _brdfLUTTexture;
 
     static bool _init;
-    static bool _hdr;
 
     static float _exposure;
     static float _colorIntensity;
@@ -29,12 +28,15 @@ private:
     static SkyboxDisplay _displayMode;
     static float _mipmapLevel;
     static float _MAX_MIPMAP_LEVEL_DEFAULT;
+    static bool _hdr;
     static bool _fromData;
     static bool _openImageDialogs[8];
     static ImFileDialogInfo _imageDialogInfos[8];
-#endif
 
     static std::string _paths[6];
+#else
+    static std::string _path;
+#endif
 
     static GLFWwindow* _window;
     static glm::ivec2 _windowSize;
