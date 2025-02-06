@@ -1,1 +1,0 @@
-Dodać if window w skybox by w console build nie było flagi hdr i paths miało tylko jedną ścieżkę i nazywało się path
