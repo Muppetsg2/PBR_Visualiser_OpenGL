@@ -4,7 +4,7 @@
 #define PBR_VISUALISER_VER_MINOR 3
 #define PBR_VISUALISER_VER_PATCH 2
 
-#define PBR_VISUALISER_LAST_UPDATE "7.02.2025"
+#define PBR_VISUALISER_LAST_UPDATE "14.02.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -45,6 +45,8 @@
 // - changed _paths[6] to _path in console build
 // - added option to close app using ImGui
 // - added information in the menu bar about whether a given window is open
+// - added checking whether the models and textures folder exists when opening a dialog box in window build
+// - fixed bug with saving screenshot to already created folder in window build
 //
 // --- 1.3.1 ---
 // - added opengl debug info in console verbose mode

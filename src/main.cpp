@@ -6,7 +6,7 @@
 //
 // Version: 1.3.2
 // Author: Marceli Antosik
-// Last Update: 7.02.2025
+// Last Update: 14.02.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -970,6 +970,9 @@ void imgui_render()
 {
     static bool _skyboxOpen = true;
     static bool _cameraOpen = true;
+    static std::string modelFolderPath = std::string(exeDirPath).append("\\res\\model");
+    static std::string screenFolderPath = std::string(exeDirPath).append("\\Screenshots");
+    static std::string textureFolderPath = std::string(exeDirPath).append("\\res\\textures");
 
     if (!ImGui::Begin("PBR VISUALISER", nullptr, ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
@@ -1010,13 +1013,15 @@ void imgui_render()
             exist = true;   // Istnieje i jest folderem
         }
 
-        if (_mkdir(screenFolderPath.c_str()) == 0) {
-            spdlog::info("Directory '{}' has been created!", screenFolderPath);
-            exist = true;
-        }
-        else {
-            spdlog::error("Directory '{}' couldn't have been created!", screenFolderPath);
-            exist = false;
+        if (!exist) {
+            if (_mkdir(screenFolderPath.c_str()) == 0) {
+                spdlog::info("Directory '{}' has been created!", screenFolderPath);
+                exist = true;
+            }
+            else {
+                spdlog::error("Directory '{}' couldn't have been created!", screenFolderPath);
+                exist = false;
+            }
         }
 
         if (exist) Camera::SaveScreenshot(screenFolderPath);
@@ -1034,7 +1039,14 @@ void imgui_render()
             if (ImGui::Selectable(name.c_str(), shapeType == acc))
             {
                 if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit()) {
-                    ModelLoader::OpenImGuiFileDialog(std::string(exeDirPath + "\\res\\model"));
+                    if (std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath))
+                    {
+                        ModelLoader::OpenImGuiFileDialog(modelFolderPath);
+                    }
+                    else
+                    {
+                        ModelLoader::OpenImGuiFileDialog(exeDirPath);
+                    }
                 }
 
                 set_shape(quadVAO, acc);
@@ -1046,7 +1058,14 @@ void imgui_render()
 
     if (ImGui::Button("Upload Model"))
     {
-        ModelLoader::OpenImGuiFileDialog(std::string(exeDirPath + "\\res\\model"));
+        if (std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath))
+        {
+            ModelLoader::OpenImGuiFileDialog(modelFolderPath);
+        }
+        else
+        {
+            ModelLoader::OpenImGuiFileDialog(exeDirPath);
+        }
     }
 
     if (ModelLoader::ShowImGuiFileDialog()) {
@@ -1087,7 +1106,7 @@ void imgui_render()
             openFileDialogs[i] = true;
             fileDialogInfos[i].title = "Choose " + imageName[i] + " image";
             fileDialogInfos[i].type = ImGuiFileDialogType_OpenFile;
-            fileDialogInfos[i].directoryPath = std::string(exeDirPath + "\\res\\textures\\");
+            fileDialogInfos[i].directoryPath = std::filesystem::exists(textureFolderPath) && std::filesystem::is_directory(textureFolderPath) ? textureFolderPath : exeDirPath;
         }
 
         if (ImGui::Button(("Reset##" + imageName[i]).c_str()))
