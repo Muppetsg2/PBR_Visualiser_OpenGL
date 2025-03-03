@@ -5,8 +5,8 @@
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
 // Version: 1.3.5
-// Author: Marceli Antosik
-// Last Update: 03.03.2025
+// Author: Marceli Antosik (Muppetsg2)
+// Last Update: 04.03.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -507,7 +507,7 @@ void drawBanner()
     spdlog::info("   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/  ");
     spdlog::info("  /_/  /____/_/|_|   |___/_/___/\\_,_/\\_,_/_/_/___/\\__/_/  \n");
     spdlog::info("                       Version: {}", PBR_VISUALISER_VERSION_STR);
-    spdlog::info("                   Author: Marceli Antosik");
+    spdlog::info("             Author: Marceli Antosik (Muppetsg2)");
     spdlog::info("                   Last Update: {}", PBR_VISUALISER_LAST_UPDATE);
 
 #if WINDOW_APP && !_DEBUG
@@ -1155,7 +1155,7 @@ void drawHelp(bool* open)
     float textX = (windowSize.x - textWidth + iconSize) * 0.5f;
     ImGui::SetCursorPosX(textX);
     ImGui::Text(text.c_str());
-    text = std::string("Author: Marceli Antosik");
+    text = std::string("Author: Marceli Antosik (Muppetsg2)");
     textWidth = ImGui::CalcTextSize(text.c_str()).x;
     textX = (windowSize.x - textWidth + iconSize) * 0.5f;
     ImGui::SetCursorPosX(textX);

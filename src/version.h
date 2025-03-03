@@ -4,7 +4,7 @@
 #define PBR_VISUALISER_VER_MINOR 3
 #define PBR_VISUALISER_VER_PATCH 5
 
-#define PBR_VISUALISER_LAST_UPDATE "03.03.2025"
+#define PBR_VISUALISER_LAST_UPDATE "04.03.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
