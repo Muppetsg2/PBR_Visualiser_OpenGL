@@ -19,9 +19,9 @@
 //
 // --- 1.3.5 ---
 // - added MSAA to window build
-// - added popup when screenshot is saved
+// - added popup when screenshot is saved in window build
 // - added new skybox in console build. Name: golden_bay
-// - repaired text in help message
+// - repaired text in help message in console build
 // - added Argument Parser in console build
 // - fixed behaviour that occured when was passed map with less channels to slot for map with more channels
 // - fixed errors while changing skybox in window build
