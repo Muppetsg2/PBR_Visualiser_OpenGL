@@ -6,7 +6,7 @@
 </div>
 
 ## 📌 Description
-PBR_Visualiser is an application for visualizing PBR maps in an OpenGL environment. It supports the rendering of 3D models with different PBR materials and allows for interaction with the camera and lighting configuration. The application has two configurations: **windowed (GUI)** and **console (CLI)**.
+**PBR Visualiser** is an application for visualizing PBR materials in an OpenGL environment. The application has two configurations: **windowed (GUI)** and **console (CLI)**. In the GUI configuration, it supports rendering 3D models with different PBR materials and allows interaction with the camera and lighting settings. In the console configuration, it supports rendering a 2D image of a PBR material in different resolutions and lighting settings.
 
 ---
 
