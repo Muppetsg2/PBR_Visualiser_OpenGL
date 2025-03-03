@@ -104,7 +104,10 @@ PBR_Visualiser.exe -p right -f .\res\textures\Rock051_2K-PNG\Color.png .\res\tex
 For more example use cases, you can refer to the `Examples.md` file, where additional command-line executions and scenarios are provided.
 
 📷 **Example of a generated image:**
-![Output Image](git_images/output.png)
+<br>
+<div align="center">
+  <img src="git_images/output.png" alt="Output Image" width="300"/>
+</div>
 
 ---
 

@@ -26,7 +26,7 @@
 // - fixed behaviour that occured when was passed map with less channels to slot for map with more channels
 // - fixed errors while changing skybox in window build
 // - fixed cleaning faces when closing window to load faces as skybox in window build
-// - changed file dialogs from ImGui FileDialogs to tinyfiledialogs
+// - changed file dialogs from ImGui FileDialogs to tinyfiledialogs in window build
 // - changed names of park skybox faces
 // - added checking whether a window is open in window drawing functions in window build
 // - python file has been added that prepares applications for public release
