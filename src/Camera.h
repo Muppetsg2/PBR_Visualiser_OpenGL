@@ -5,7 +5,7 @@
 
 #include <macros.h>
 
-ENUM_CLASS_BASE_VALUE(CameraColorMode, uint8_t, DEFAULT, 0, NEGATIVE, 1, GRAYSCALE, 2)
+ENUM_CLASS_BASE_VALUE(CameraColorMode, uint8_t, DEFAULT, 0, NEGATIVE, 1, GRAYSCALE, 2, NEGATIVE_GRAYSCALE, 3)
 #endif
 
 class Camera {
@@ -14,14 +14,21 @@ private:
 
 #if WINDOW_APP
 	static GLuint _fbo;
-	static GLuint _rbo;
 	static GLuint _renderTexture;
+
+	static GLuint _screenshotFBO;
+	static GLuint _screenshotTexture;
+	
+	static GLuint _msFBO;
+	static GLuint _msRBO;
+	static GLuint _msRenderTexture;
 
 	static GLuint _vao;
 
 	static Shader* _renderShader;
 
 	static float _pixelate;
+	static uint8_t _samples;
 	static CameraColorMode _colorMode;
 #endif
 
@@ -59,7 +66,7 @@ public:
 
 #if WINDOW_APP
 	static void Render();
-	static void SaveScreenshot(std::string path);
+	static std::pair<bool, std::string> SaveScreenshot(std::string path);
 
 	static void StartCapturing();
 	static void StopCapturing();
@@ -75,6 +82,7 @@ public:
 	static float GetFarPlane();
 #if WINDOW_APP
 	static float GetPixelate();
+	static uint8_t GetSamples();
 	static CameraColorMode GetColorMode();
 #endif
 	static glm::vec3 GetFrontDir();
@@ -93,6 +101,7 @@ public:
 	static void SetWorldUp(glm::vec3 value);
 #if WINDOW_APP
 	static void SetPixelate(float value);
+	static void SetSamples(uint8_t samples);
 	static void SetColorMode(CameraColorMode mode);
 
 	static void DrawEditor(bool* open);

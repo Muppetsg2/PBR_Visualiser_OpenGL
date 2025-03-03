@@ -19,10 +19,6 @@ private:
 	static GLuint _vbo;
 	static GLuint _ebo;
 
-	// ImGui
-	static bool openFileDialog;
-	static ImFileDialogInfo fileDialogInfo;
-
 	static std::pair<glm::vec3, glm::vec3> CalcTangentBitangent(size_t t1, size_t t2, size_t t3);
 
 	static bool LoadModelFromGLTF(std::string path);
@@ -49,6 +45,5 @@ public:
 
 	static void Deinit();
 
-	static void OpenImGuiFileDialog(std::string path);
-	static bool ShowImGuiFileDialog();
+	static bool OpenFileDialog(std::string path);
 };

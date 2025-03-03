@@ -25,8 +25,6 @@ float Skybox::_mipmapLevel = 0.0f;
 float Skybox::_MAX_MIPMAP_LEVEL_DEFAULT = 0.f;
 bool Skybox::_hdr = false;
 bool Skybox::_fromData = false;
-bool Skybox::_openImageDialogs[8] = { false, false, false, false, false, false, false, false };
-ImFileDialogInfo Skybox::_imageDialogInfos[8];
 
 std::string Skybox::_paths[6] = { "", "", "", "", "", "" };
 #else
@@ -1566,6 +1564,17 @@ void Skybox::Deinit()
 
 		glDeleteTextures(1, &Skybox::_texture);
 		Skybox::_texture = 0;
+
+		glDeleteTextures(1, &Skybox::_irradianceTexture);
+		Skybox::_irradianceTexture = 0;
+
+		glDeleteTextures(1, &Skybox::_prefilterTexture);
+		Skybox::_prefilterTexture = 0;
+
+		glDeleteTextures(1, &Skybox::_brdfLUTTexture);
+		Skybox::_brdfLUTTexture = 0;
+
+		Skybox::_window = nullptr;
 	}
 }
 
@@ -1840,7 +1849,10 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
 #if WINDOW_APP
-	if (!oldHDR) glGenTextures(1, &Skybox::_texture);
+	if (!oldHDR) {
+		glDeleteTextures(1, &Skybox::_texture);
+		glGenTextures(1, &Skybox::_texture);
+	}
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_texture);
 	if (!oldHDR) {
 		for (unsigned int i = 0; i < 6; ++i)
@@ -1901,6 +1913,8 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	// IRRADIANCE
 	//size / 16
 	int irrSize = 32;
+	glDeleteTextures(1, &Skybox::_irradianceTexture);
+	glGenTextures(1, &Skybox::_irradianceTexture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
 	for (unsigned int i = 0; i < 6; ++i)
 	{
@@ -1940,6 +1954,8 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 
 	// PREFILTER
 	int preSize = 512;
+	glDeleteTextures(1, &Skybox::_prefilterTexture);
+	glGenTextures(1, &Skybox::_prefilterTexture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_prefilterTexture);
 	for (unsigned int i = 0; i < 6; ++i)
 	{
@@ -2151,6 +2167,8 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 
 	// 2048 / 16
 	int irrSize = 32;
+	glDeleteTextures(1, &Skybox::_irradianceTexture);
+	glGenTextures(1, &Skybox::_irradianceTexture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_irradianceTexture);
 	for (unsigned int i = 0; i < 6; ++i)
 	{
@@ -2192,6 +2210,8 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 
 	// PREFILTER
 	int preSize = 512;
+	glDeleteTextures(1, &Skybox::_prefilterTexture);
+	glGenTextures(1, &Skybox::_prefilterTexture);
 	glGenTextures(1, &Skybox::_prefilterTexture);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, Skybox::_prefilterTexture);
 	for (unsigned int i = 0; i < 6; ++i)
@@ -2251,8 +2271,10 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 	if (isDir) Skybox::SaveData(res.second);
 }
 
-void Skybox::DrawEditor(bool* open)
+void Skybox::DrawEditor(bool* open, std::string skyboxDir)
 {
+	if (!*open) return;
+
 	if (!ImGui::Begin("Skybox", open)) {
 		ImGui::End();
 		return;
@@ -2260,18 +2282,16 @@ void Skybox::DrawEditor(bool* open)
 
 	if (ImGui::Button("Load HDR Skybox"))
 	{
-		Skybox::_openImageDialogs[6] = true;
-		Skybox::_imageDialogInfos[6].title = "Choose HDR image";
-		Skybox::_imageDialogInfos[6].type = ImGuiFileDialogType_OpenFile;
-		Skybox::_imageDialogInfos[6].directoryPath = std::filesystem::current_path().append("res\\skybox\\");
-	}
+		const char* filters[] = { "*.hdr" };
+		const char* filePath = tinyfd_openFileDialog(
+			"Choose HDR skybox",
+			skyboxDir.c_str(),
+			1, filters, "HDR Files (*.hdr)", 0);
 
-	if (Skybox::_openImageDialogs[6])
-	{
-		if (ImGui::FileDialog(&Skybox::_openImageDialogs[6], &Skybox::_imageDialogInfos[6]))
+		if (filePath)
 		{
 			Skybox::_fromData = false;
-			ChangeTexture(Skybox::_imageDialogInfos[6].resultPath.string().c_str());
+			ChangeTexture(filePath);
 		}
 	}
 
@@ -2284,18 +2304,15 @@ void Skybox::DrawEditor(bool* open)
 
 	if (ImGui::Button("Load Skybox from Data"))
 	{
-		Skybox::_openImageDialogs[7] = true;
-		Skybox::_imageDialogInfos[7].title = "Choose Skybox Data Folder";
-		Skybox::_imageDialogInfos[7].type = ImGuiFileDialogType_OpenDirectory;
-		Skybox::_imageDialogInfos[7].directoryPath = std::filesystem::current_path().append("res\\skybox\\");
-	}
+		const char* folderPath = tinyfd_selectFolderDialog(
+			"Choose Skybox Data Folder",
+			skyboxDir.c_str()
+		);
 
-	if (Skybox::_openImageDialogs[7])
-	{
-		if (ImGui::FileDialog(&Skybox::_openImageDialogs[7], &Skybox::_imageDialogInfos[7]))
+		if (folderPath)
 		{
 			Skybox::_fromData = true;
-			LoadSavedDataToChange(Skybox::_imageDialogInfos[7].resultPath.string());
+			LoadSavedDataToChange(folderPath);
 		}
 	}
 
@@ -2360,36 +2377,49 @@ void Skybox::DrawEditor(bool* open)
 
 	ImGui::End();
 
-	if (_facesOpen) Skybox::DrawSkyboxFacesLoader(&_facesOpen);
+	Skybox::DrawSkyboxFacesLoader(&_facesOpen, skyboxDir);
 }
 
-void Skybox::DrawSkyboxFacesLoader(bool* open)
+void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 {
+	static const char* labels[6] = { "Right", "Left", "Top", "Bottom", "Front", "Back" };
+	static Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+
+	if (!*open) {
+		if (imageTextures[0]) delete imageTextures[0]; imageTextures[0] = nullptr;
+		if (imageTextures[1]) delete imageTextures[1]; imageTextures[1] = nullptr;
+		if (imageTextures[2]) delete imageTextures[2]; imageTextures[2] = nullptr;
+		if (imageTextures[3]) delete imageTextures[3]; imageTextures[3] = nullptr;
+		if (imageTextures[4]) delete imageTextures[4]; imageTextures[4] = nullptr;
+		if (imageTextures[5]) delete imageTextures[5]; imageTextures[5] = nullptr;
+		return;
+	}
+
 	if (!ImGui::Begin("Skybox Faces Loader Window", open)) {
 		ImGui::End();
 		return;
 	}
 
-	static const char* labels[6] = { "Right", "Left", "Top", "Bottom", "Front", "Back" };
-	static Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-
 	for (int i = 0; i < 6; ++i)
 	{
 		if (ImGui::Button(("Load Image " + std::string(labels[i])).c_str()))
 		{
-			Skybox::_openImageDialogs[i] = true;
-			Skybox::_imageDialogInfos[i].title = "Choose " + std::string(labels[i]) + " image";
-			Skybox::_imageDialogInfos[i].type = ImGuiFileDialogType_OpenFile;
-			Skybox::_imageDialogInfos[i].directoryPath = std::filesystem::current_path().append("res\\skybox\\");
-		}
+			const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
+			const char* filePath = tinyfd_openFileDialog(
+				("Choose " + std::string(labels[i]) + " image").c_str(),
+				skyboxDir.c_str(),
+				3, filters, "Image Files (*.png, *.jpg, *.jpeg)", 0);
 
-		if (Skybox::_openImageDialogs[i])
-		{
-			if (ImGui::FileDialog(&Skybox::_openImageDialogs[i], &Skybox::_imageDialogInfos[i]))
+			if (filePath)
 			{
 				TextureFileFormat inter = TextureFileFormat::SRGB;
 				TextureFormat form = TextureFormat::RGB;
-				imageTextures[i] = new Texture2D(Skybox::_imageDialogInfos[i].resultPath.string().c_str(), inter, form);
+				imageTextures[i] = new Texture2D(filePath, inter, form);
+
+				if (!imageTextures[i]->IsInit()) {
+					delete imageTextures[i];
+					imageTextures[i] = nullptr;
+				}
 			}
 		}
 
@@ -2419,20 +2449,6 @@ void Skybox::DrawSkyboxFacesLoader(bool* open)
 
 		Skybox::_fromData = false;
 		ChangeTexture(paths);
-
-		delete imageTextures[0];
-		delete imageTextures[1];
-		delete imageTextures[2];
-		delete imageTextures[3];
-		delete imageTextures[4];
-		delete imageTextures[5];
-
-		imageTextures[0] = nullptr;
-		imageTextures[1] = nullptr;
-		imageTextures[2] = nullptr;
-		imageTextures[3] = nullptr;
-		imageTextures[4] = nullptr;
-		imageTextures[5] = nullptr;
 
 		*open = false;
 	}

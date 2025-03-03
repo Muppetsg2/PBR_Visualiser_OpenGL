@@ -46,6 +46,12 @@ if(WINDOW_APP)
     add_library(tiny_obj_loader STATIC ${TINY_OBJ_LOADER_DIR}/tiny_obj_loader.cpp)
     target_include_directories(tiny_obj_loader PRIVATE ${TINY_OBJ_LOADER_DIR})
 
+    # tiny_file_dialogs
+    set(TINY_FILE_DIALOGS_DIR ${CMAKE_CURRENT_LIST_DIR}/tiny_file_dialogs)
+    set(tiny_file_dialogs_SOURCE_DIR ${TINY_FILE_DIALOGS_DIR} CACHE INTERNAL "")
+    add_library(tiny_file_dialogs STATIC ${TINY_FILE_DIALOGS_DIR}/tinyfiledialogs.c)
+    target_include_directories(tiny_file_dialogs PRIVATE ${TINY_FILE_DIALOGS_DIR})
+
     CPMAddPackage("gh:ocornut/imgui@1.91.8-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
@@ -57,7 +63,8 @@ if(WINDOW_APP)
     
     set_target_properties(imgui
                           cgltf 
-                          tiny_obj_loader PROPERTIES FOLDER "thirdparty")
+                          tiny_obj_loader 
+                          tiny_file_dialogs PROPERTIES FOLDER "thirdparty")
 endif()
 
 set_target_properties(glad

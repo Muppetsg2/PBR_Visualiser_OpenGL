@@ -29,6 +29,9 @@ vec3 applyColor(vec3 color) {
         case 2:
             result = applyGrayscale(color);
             break;
+        case 3:
+            result = applyGrayscale(applyNegative(color));
+            break;
         default:
             result = color;
             break;

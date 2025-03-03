@@ -4,14 +4,21 @@ GLuint Camera::_uboMatrices = 0;
 
 #if WINDOW_APP
 GLuint Camera::_fbo = 0;
-GLuint Camera::_rbo = 0;
 GLuint Camera::_renderTexture = 0;
+
+GLuint Camera::_screenshotFBO = 0;
+GLuint Camera::_screenshotTexture = 0;
+
+GLuint Camera::_msFBO = 0;
+GLuint Camera::_msRBO = 0;
+GLuint Camera::_msRenderTexture = 0;
 
 GLuint Camera::_vao = 0;
 
 Shader* Camera::_renderShader = nullptr;
 
 float Camera::_pixelate = 1.0;
+uint8_t Camera::_samples = 4.0;
 CameraColorMode Camera::_colorMode = CameraColorMode::DEFAULT;
 #endif
 
@@ -54,13 +61,44 @@ void Camera::OnTransformChange()
 #if WINDOW_APP
 bool Camera::InitFramebuffer()
 {
-	glGenFramebuffers(1, &Camera::_fbo);
-	glGenRenderbuffers(1, &Camera::_rbo);
+	glGenFramebuffers(1, &Camera::_msFBO);
+	glGenRenderbuffers(1, &Camera::_msRBO);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_msFBO);
+	glBindRenderbuffer(GL_RENDERBUFFER, Camera::_msRBO);
+
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, Camera::_samples, GL_DEPTH24_STENCIL8, Camera::_windowSize.x, Camera::_windowSize.y);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, Camera::_msRBO);
+
+	glGenTextures(1, &Camera::_msRenderTexture);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, Camera::_msRenderTexture);
+	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Camera::_samples, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, GL_TRUE);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_msFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, Camera::_msRenderTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		spdlog::error("An error occurred while creating the framebuffer");
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		glDeleteTextures(1, &Camera::_msRenderTexture);
+		glDeleteRenderbuffers(1, &Camera::_msRBO);
+		glDeleteFramebuffers(1, &Camera::_msFBO);
+
+		Camera::_msRenderTexture = 0;
+		Camera::_msRBO = 0;
+		Camera::_msFBO = 0;
+
+		return false;
+	}
+
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+
+	glGenFramebuffers(1, &Camera::_fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, Camera::_rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Camera::_windowSize.x, Camera::_windowSize.y);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, Camera::_rbo);
 
 	glGenTextures(1, &Camera::_renderTexture);
 	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
@@ -77,18 +115,62 @@ bool Camera::InitFramebuffer()
 		spdlog::error("An error occurred while creating the framebuffer");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDeleteTextures(1, &Camera::_msRenderTexture);
 		glDeleteTextures(1, &Camera::_renderTexture);
-		glDeleteRenderbuffers(1, &Camera::_rbo);
+		glDeleteRenderbuffers(1, &Camera::_msRBO);
+		glDeleteFramebuffers(1, &Camera::_msFBO);
 		glDeleteFramebuffers(1, &Camera::_fbo);
 
+		Camera::_msRenderTexture = 0;
 		Camera::_renderTexture = 0;
-		Camera::_rbo = 0;
+		Camera::_msRBO = 0;
+		Camera::_msFBO = 0;
 		Camera::_fbo = 0;
 
 		return false;
 	}
 
+	glGenFramebuffers(1, &Camera::_screenshotFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_screenshotFBO);
+
+	glGenTextures(1, &Camera::_screenshotTexture);
+	glBindTexture(GL_TEXTURE_2D, Camera::_screenshotTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_screenshotFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Camera::_screenshotTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		spdlog::error("An error occurred while creating the framebuffer");
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDeleteTextures(1, &Camera::_msRenderTexture);
+		glDeleteTextures(1, &Camera::_renderTexture);
+		glDeleteTextures(1, &Camera::_screenshotTexture);
+		glDeleteRenderbuffers(1, &Camera::_msRBO);
+		glDeleteFramebuffers(1, &Camera::_msFBO);
+		glDeleteFramebuffers(1, &Camera::_fbo);
+		glDeleteFramebuffers(1, &Camera::_screenshotFBO);
+
+		Camera::_msRenderTexture = 0;
+		Camera::_renderTexture = 0;
+		Camera::_screenshotTexture = 0;
+		Camera::_msRBO = 0;
+		Camera::_msFBO = 0;
+		Camera::_fbo = 0;
+		Camera::_screenshotFBO = 0;
+
+		return false;
+	}
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	glGenVertexArrays(1, &Camera::_vao);
 
@@ -169,13 +251,21 @@ void Camera::Deinit()
 	Camera::_window = nullptr;
 
 #if WINDOW_APP
+	glDeleteTextures(1, &Camera::_msRenderTexture);
 	glDeleteTextures(1, &Camera::_renderTexture);
-	glDeleteRenderbuffers(1, &Camera::_rbo);
+	glDeleteTextures(1, &Camera::_screenshotTexture);
+	glDeleteRenderbuffers(1, &Camera::_msRBO);
+	glDeleteFramebuffers(1, &Camera::_msFBO);
 	glDeleteFramebuffers(1, &Camera::_fbo);
+	glDeleteFramebuffers(1, &Camera::_screenshotFBO);
 
+	Camera::_msRenderTexture = 0;
 	Camera::_renderTexture = 0;
-	Camera::_rbo = 0;
+	Camera::_screenshotTexture = 0;
+	Camera::_msRBO = 0;
+	Camera::_msFBO = 0;
 	Camera::_fbo = 0;
+	Camera::_screenshotFBO = 0;
 
 	glDeleteVertexArrays(1, &Camera::_vao);
 	Camera::_vao = 0;
@@ -189,7 +279,6 @@ void Camera::Deinit()
 void Camera::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//glClearColor(0.f, 0.f, 0.f, 1.f);
 
 	Camera::_renderShader->Use();
 	glActiveTexture(GL_TEXTURE0 + 10);
@@ -198,16 +287,25 @@ void Camera::Render()
 	Camera::_renderShader->SetFloat("pixelate", Camera::_pixelate);
 	Camera::_renderShader->SetInt("mode", (int)(uint8_t)Camera::_colorMode);
 
+	// For screenshot
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_screenshotFBO);
+	glViewport(0, 0, Camera::_windowSize.x, Camera::_windowSize.y);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glBindVertexArray(Camera::_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glBindVertexArray(0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	glBindVertexArray(Camera::_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glBindVertexArray(0);
 }
 
-void Camera::SaveScreenshot(std::string path)
+std::pair<bool, std::string> Camera::SaveScreenshot(std::string path)
 {
 	// Save Image
 	int width, height;
-	glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
+	glBindTexture(GL_TEXTURE_2D, Camera::_screenshotTexture);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
@@ -237,16 +335,21 @@ void Camera::SaveScreenshot(std::string path)
 	delete[] data;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return std::pair<bool, std::string>(result != 0, name);
 }
 
 void Camera::StartCapturing()
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, Camera::_msFBO);
 	glViewport(0, 0, Camera::_windowSize.x, Camera::_windowSize.y);
 }
 
 void Camera::StopCapturing()
 {
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, _msFBO);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
+	glBlitFramebuffer(0, 0, Camera::_windowSize.x, Camera::_windowSize.y, 0, 0, Camera::_windowSize.x, Camera::_windowSize.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 #endif
@@ -270,10 +373,19 @@ void Camera::OnWindowSizeChange()
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 #if WINDOW_APP
-		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_fbo);
-		glBindRenderbuffer(GL_RENDERBUFFER, Camera::_rbo);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Camera::_windowSize.x, Camera::_windowSize.y);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, Camera::_rbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_msFBO);
+		glBindRenderbuffer(GL_RENDERBUFFER, Camera::_msRBO);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, Camera::_samples, GL_DEPTH24_STENCIL8, Camera::_windowSize.x, Camera::_windowSize.y);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, Camera::_msRBO);
+
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, Camera::_msRenderTexture);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Camera::_samples, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, GL_TRUE);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_msFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, Camera::_msRenderTexture, 0);
+
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 		glBindTexture(GL_TEXTURE_2D, Camera::_renderTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
@@ -282,7 +394,15 @@ void Camera::OnWindowSizeChange()
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Camera::_renderTexture, 0);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		glBindTexture(GL_TEXTURE_2D, Camera::_screenshotTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, Camera::_screenshotFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Camera::_screenshotTexture, 0);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
 	}
@@ -317,6 +437,11 @@ float Camera::GetFarPlane()
 float Camera::GetPixelate()
 {
 	return Camera::_pixelate;
+}
+
+uint8_t Camera::GetSamples()
+{
+	return Camera::_samples;
 }
 
 CameraColorMode Camera::GetColorMode()
@@ -409,6 +534,21 @@ void Camera::SetPixelate(float value)
 	Camera::_pixelate = std::max(value, 1.0f);
 }
 
+void Camera::SetSamples(uint8_t samples)
+{
+	Camera::_samples = std::clamp(samples, (uint8_t)1, (uint8_t)16);
+
+	if (Camera::_init) {
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, Camera::_msRenderTexture);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Camera::_samples, GL_RGB, Camera::_windowSize.x, Camera::_windowSize.y, GL_TRUE);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+
+		glBindRenderbuffer(GL_RENDERBUFFER, Camera::_msRBO);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, Camera::_samples, GL_DEPTH24_STENCIL8, Camera::_windowSize.x, Camera::_windowSize.y);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	}
+}
+
 void Camera::SetColorMode(CameraColorMode mode)
 {
 	Camera::_colorMode = mode;
@@ -416,6 +556,8 @@ void Camera::SetColorMode(CameraColorMode mode)
 
 void Camera::DrawEditor(bool* open)
 {
+	if (!*open) return;
+
 	if (!ImGui::Begin("Camera", open)) {
 		ImGui::End();
 		return;
@@ -432,6 +574,13 @@ void Camera::DrawEditor(bool* open)
 			}
 		}
 		ImGui::EndCombo();
+	}
+
+	int s = (int)Camera::_samples;
+	ImGui::DragInt("MSAA Samples", &s, 1.0, 1, 16);
+
+	if ((int)Camera::_samples != s) {
+		Camera::SetSamples((uint8_t)s);
 	}
 
 	float value = Camera::_pixelate;

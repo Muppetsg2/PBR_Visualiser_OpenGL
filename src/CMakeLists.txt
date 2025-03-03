@@ -1,8 +1,11 @@
 set(PRECOMPILE_HEADERS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/pch.h)
+set(CMAKE_AUTORCC ON)
 
 include(${CMAKE_SOURCE_DIR}/cmake/pack_shaders.cmake)
 
 generate_key(6 SHADERS_KEY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.png ${CMAKE_CURRENT_BINARY_DIR}/icon.png COPYONLY)
 
 # Add source files
 file(GLOB_RECURSE SOURCE_FILES 
@@ -14,7 +17,10 @@ file(GLOB_RECURSE HEADER_FILES
 	 *.h
 	 *.hpp)
 	 
-if (NOT WINDOW_APP)
+if (WINDOW_APP)
+	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(ArgumentParser\.cpp).*")
+	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(ArgumentParser\.h).*")
+else()
 	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.cpp|ModelLoader\.cpp).*")
 	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.h|ModelLoader\.h).*")
 endif()
@@ -30,7 +36,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADER_FILES})
 source_group(TREE ${CMAKE_SOURCE_DIR}         FILES ${ASSETS_FILES})
 
 # Define the executable
-add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES} ${ASSETS_FILES})
+add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES} ${ASSETS_FILES} icon.rc)
 
 if(MSVC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
@@ -69,10 +75,12 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glad
 if(WINDOW_APP)
 	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR}
 													   ${cgltf_SOURCE_DIR}
-													   ${tiny_obj_loader_SOURCE_DIR})
+													   ${tiny_obj_loader_SOURCE_DIR}
+													   ${tiny_file_dialogs_SOURCE_DIR})
 	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui
 												  cgltf
-												  tiny_obj_loader)
+												  tiny_obj_loader
+												  tiny_file_dialogs)
 endif()
 
 # Shader Packing

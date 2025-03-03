@@ -13,10 +13,6 @@ ModelFormat ModelLoader::_format = ModelFormat::NONE;
 GLuint ModelLoader::_vbo = 0;
 GLuint ModelLoader::_ebo = 0;
 
-// ImGui
-bool ModelLoader::openFileDialog = false;
-ImFileDialogInfo ModelLoader::fileDialogInfo = ImFileDialogInfo();
-
 std::pair<glm::vec3, glm::vec3> ModelLoader::CalcTangentBitangent(size_t t1, size_t t2, size_t t3)
 {
     std::pair<glm::vec3, glm::vec3> TB;
@@ -592,22 +588,18 @@ void ModelLoader::Deinit()
     }
 }
 
-void ModelLoader::OpenImGuiFileDialog(std::string path)
+bool ModelLoader::OpenFileDialog(std::string path)
 {
-    ModelLoader::openFileDialog = true;
-    ModelLoader::fileDialogInfo.title = "Choose 3D Object File";
-    ModelLoader::fileDialogInfo.type = ImGuiFileDialogType_OpenFile;
-    ModelLoader::fileDialogInfo.directoryPath = path;
-}
+    const char* filters[] = { "*.obj", "*.glb", "*.gltf" };
+    const char* filePath = tinyfd_openFileDialog(
+        "Choose 3D Object File",
+        path.c_str(),
+        3, filters, "3D Objects (*.obj, *.glb, *.gltf)", 0);
 
-bool ModelLoader::ShowImGuiFileDialog()
-{
-    if (openFileDialog)
+    if (filePath)
     {
-        if (ImGui::FileDialog(&ModelLoader::openFileDialog, &ModelLoader::fileDialogInfo))
-        {
-            return ModelLoader::LoadModel(ModelLoader::fileDialogInfo.resultPath.string());
-        }
+        ModelLoader::LoadModel(filePath);
+        return true;
     }
 
     return false;

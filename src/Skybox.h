@@ -30,8 +30,6 @@ private:
     static float _MAX_MIPMAP_LEVEL_DEFAULT;
     static bool _hdr;
     static bool _fromData;
-    static bool _openImageDialogs[8];
-    static ImFileDialogInfo _imageDialogInfos[8];
 
     static std::string _paths[6];
 #else
@@ -82,7 +80,7 @@ public:
     static void ChangeTexture(const GLchar* hdr);
 #if WINDOW_APP
     static void ChangeTexture(const GLchar* faces[6]);
-    static void DrawEditor(bool* open);
-    static void DrawSkyboxFacesLoader(bool* open);
+    static void DrawEditor(bool* open, std::string skyboxDir);
+    static void DrawSkyboxFacesLoader(bool* open, std::string skyboxDir);
 #endif
 };

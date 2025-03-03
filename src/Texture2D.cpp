@@ -1,5 +1,99 @@
 #include <Texture2D.h>
 
+int Texture2D::GetChannelsFromFileFormat(TextureFileFormat fileFormat) {
+	switch (fileFormat) {
+		// 1 kana³
+		case TextureFileFormat::R32_FLOAT:
+		case TextureFileFormat::R8_SNORM:
+		case TextureFileFormat::COMPRESSED_R:
+		case TextureFileFormat::DEPTH_COMPONENT:
+		case TextureFileFormat::R8:
+		case TextureFileFormat::R16:
+		case TextureFileFormat::R16_SNORM:
+		case TextureFileFormat::R8_INT:
+		case TextureFileFormat::R8_UINT:
+		case TextureFileFormat::R16_INT:
+		case TextureFileFormat::R16_UINT:
+		case TextureFileFormat::R32_INT:
+		case TextureFileFormat::R32_UINT:
+		case TextureFileFormat::COMPRESSED_R_RGTC1:
+		case TextureFileFormat::COMPRESSED_SIGNED_R_RGTC1:
+			return 1;
+
+			// 2 kana³y
+		case TextureFileFormat::RG:
+		case TextureFileFormat::RG8:
+		case TextureFileFormat::RG8_SNORM:
+		case TextureFileFormat::RG16:
+		case TextureFileFormat::RG16_SNORM:
+		case TextureFileFormat::RG3_B2:
+		case TextureFileFormat::RG8_INT:
+		case TextureFileFormat::RG8_UINT:
+		case TextureFileFormat::RG16_INT:
+		case TextureFileFormat::RG16_UINT:
+		case TextureFileFormat::RG32_INT:
+		case TextureFileFormat::RG32_UINT:
+		case TextureFileFormat::COMPRESSED_RG:
+		case TextureFileFormat::COMPRESSED_RG_RGTC2:
+		case TextureFileFormat::COMPRESSED_SIGNED_RG_RGTC2:
+			return 2;
+
+			// 3 kana³y
+		case TextureFileFormat::RGB:
+		case TextureFileFormat::SRGB:
+		case TextureFileFormat::RGB4:
+		case TextureFileFormat::RGB5:
+		case TextureFileFormat::RGB8:
+		case TextureFileFormat::RGB8_SNORM:
+		case TextureFileFormat::SRGB8:
+		case TextureFileFormat::RGB10:
+		case TextureFileFormat::RGB12:
+		case TextureFileFormat::RGB16_SNORM:
+		case TextureFileFormat::RGB8_INT:
+		case TextureFileFormat::RGB8_UINT:
+		case TextureFileFormat::RGB16_INT:
+		case TextureFileFormat::RGB16_UINT:
+		case TextureFileFormat::RGB32_INT:
+		case TextureFileFormat::RGB32_UINT:
+		case TextureFileFormat::RGB16_FLOAT:
+		case TextureFileFormat::RGB32_FLOAT:
+		case TextureFileFormat::RGB9_E5:
+		case TextureFileFormat::RGB10_A2:
+		case TextureFileFormat::RGB10_A2_UINT:
+		case TextureFileFormat::COMPRESSED_RGB:
+			return 3;
+
+		// 4 kana³y
+		case TextureFileFormat::RGBA:
+		case TextureFileFormat::RGBA2:
+		case TextureFileFormat::RGBA4:
+		case TextureFileFormat::RGB5_A1:
+		case TextureFileFormat::RGBA8:
+		case TextureFileFormat::RGBA8_SNORM:
+		case TextureFileFormat::RGBA12:
+		case TextureFileFormat::RGBA16:
+		case TextureFileFormat::RGBA8_INT:
+		case TextureFileFormat::RGBA8_UINT:
+		case TextureFileFormat::RGBA16_INT:
+		case TextureFileFormat::RGBA16_UINT:
+		case TextureFileFormat::RGBA32_INT:
+		case TextureFileFormat::RGBA32_UINT:
+		case TextureFileFormat::RGBA16_FLOAT:
+		case TextureFileFormat::RGBA32_FLOAT:
+		case TextureFileFormat::COMPRESSED_RGBA:
+		case TextureFileFormat::COMPRESSED_SRGB:
+		case TextureFileFormat::COMPRESSED_SRGBA:
+		case TextureFileFormat::COMPRESSED_RGBA_BPTC_UNORM:
+		case TextureFileFormat::COMPRESSED_SRGBA_BPTC_UNORM:
+		case TextureFileFormat::COMPRESSED_RGB_BPTC_SIGNED_FLOAT:
+		case TextureFileFormat::COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT:
+			return 4;
+
+		default:
+			return 0;
+	}
+}
+
 void Texture2D::GenerateGLTexture(const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool detectFormat)
 {
 	this->_id = 0;
@@ -28,49 +122,36 @@ void Texture2D::GenerateGLTexture(const TextureFileFormat& fileFormat, const Tex
 void Texture2D::LoadTextureFromFile(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip, bool detectFormat)
 {
 	stbi_set_flip_vertically_on_load(flip);
-	this->_hdr = (std::filesystem::path(std::string(path)).extension().string() == std::string(".hdr"));
+	this->_hdr = (std::filesystem::path(path).extension() == ".hdr");
 	bool err = false;
 
-	if (this->_hdr) {
-		float* image = stbi_loadf(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
+	int actualChannels = 0;
+	void* image = this->_hdr ? (void*)stbi_loadf(path, &(this->_size.x), &(this->_size.y), &actualChannels, 0)
+							 : (void*)stbi_load(path, &(this->_size.x), &(this->_size.y), &actualChannels, 0);
+	if (image) {
+		int predChannels = GetChannelsFromFileFormat(fileFormat);
 
-		if (image) {
-			this->_path = std::string(path);
-
-			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
-
-			glBindTexture(GL_TEXTURE_2D, this->_id);
-			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_FLOAT, image);
-			glGenerateMipmap(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-		else {
-			spdlog::error("Failed to load texture: {}", path);
-			err = true;
+		if (actualChannels < predChannels) {
+			spdlog::error("Texture '{}' has fewer channels ({}) than required by the format ({}).", path, actualChannels, predChannels);
+			stbi_image_free(image);
+			return;
 		}
 
-		stbi_image_free(image);
+		this->_path = path;
+		this->_channelsNum = actualChannels;
+		GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
+
+		glBindTexture(GL_TEXTURE_2D, this->_id);
+		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, this->_hdr ? GL_FLOAT : GL_UNSIGNED_BYTE, image);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	else {
-		unsigned char* image = stbi_load(path, &(this->_size.x), &(this->_size.y), &(this->_channelsNum), 0);
-
-		if (image) {
-			this->_path = std::string(path);
-
-			GenerateGLTexture(fileFormat, format, sWrapMode, tWrapMode, minFilterMode, magFilterMode, detectFormat);
-
-			glBindTexture(GL_TEXTURE_2D, this->_id);
-			glTexImage2D(GL_TEXTURE_2D, 0, (GLenum)this->_fileFormat, this->_size.x, this->_size.y, 0, (GLenum)this->_format, GL_UNSIGNED_BYTE, image);
-			glGenerateMipmap(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-		else {
-			spdlog::error("Failed to load texture: {}", path);
-			err = true;
-		}
-
-		stbi_image_free(image);
+		spdlog::error("Failed to load texture: {}", path);
+		err = true;
 	}
+
+	stbi_image_free(image);
 
 	_init = !err;
 

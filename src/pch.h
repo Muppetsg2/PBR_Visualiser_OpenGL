@@ -3,18 +3,22 @@
 #if WINDOW_APP
 // IMGUI
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
+#define IMGUI_ENABLE_FREETYPE
+#define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <imgui.h>
 #include <imgui_impl/imgui_impl_glfw.h>
 #include <imgui_impl/imgui_impl_opengl3.h>
-#include <imgui_impl/imgui_filedialog.h>
+#include <imgui_impl/imgui_style.h>
 
 // CGLTF
 #include <cgltf.h>
 
-
 // TINY_OBJ_LOADER
 #include <tiny_obj_loader.h>
+
+// TINY_FILE_DIALOGS
+#include <tinyfiledialogs.h>
 #endif
 
 // GLAD

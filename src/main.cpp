@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.2
+// Version: 1.3.5
 // Author: Marceli Antosik
-// Last Update: 14.02.2025
+// Last Update: 03.03.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -23,6 +23,8 @@ extern "C" {
 #if WINDOW_APP
 #include <TimeManager.h>
 #include <ModelLoader.h>
+#else
+#include <ArgumentParser.h>
 #endif
 
 #if WINDOW_APP && _DEBUG
@@ -135,13 +137,14 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void init_imgui();
 void imgui_begin();
 void imgui_render();
+void drawHelp(bool* open);
 void imgui_end();
 #else
 ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
 
 ENUM_CLASS_BASE_VALUE(RenderResolution, uint8_t, R128, 0, R256, 1, R512, 2, R1K, 3, R2K, 4, R4K, 5, DEFAULT, 6)
 
-ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, DEFAULT, 8)
+ENUM_CLASS_BASE_VALUE(SkyboxEnum, uint8_t, PARK, 0, HILL, 1, PHOTOSTUDIO, 2, BATHROOM, 3, MOONLESS_GOLF, 4, SNOWY_FIELD, 5, VENICE_SUNSET, 6, SATARA_NIGHT, 7, GOLDEN_BAY, 8, DEFAULT, 9)
 
 bool isExposureSet = false;
 bool isIntensitySet = false;
@@ -198,6 +201,8 @@ const     char*   glsl_version     = "#version 450";
 constexpr int32_t GL_VERSION_MAJOR = 4;
 constexpr int32_t GL_VERSION_MINOR = 5;
 
+const char* iconPath = "icon.png";
+
 Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 static const std::string imageName[6] = { "Albedo", "Normal", "Metallic", "Displacement", "Roughness", "AO" };
 GLuint defaultWhiteTexture = 0;
@@ -211,9 +216,6 @@ float exposure = 1.f;
 float colorIntensity = 1.f;
 
 #if WINDOW_APP
-bool openFileDialogs[6] = { false, false, false, false, false, false };
-ImFileDialogInfo fileDialogInfos[6];
-
 bool drawSkybox = true;
 ImVec4 bgColor = ImVec4(0.f, 0.f, 0.f, 1.f);
 
@@ -234,7 +236,8 @@ static const std::vector<std::string> skyboxPaths =
     "\\res\\skybox\\moonless_golf_4k.hdr",
     "\\res\\skybox\\snowy_field_4k.hdr",
     "\\res\\skybox\\venice_sunset_4k.hdr",
-    "\\res\\skybox\\satara_night_4k.hdr"
+    "\\res\\skybox\\satara_night_4k.hdr",
+    "\\res\\skybox\\golden_bay_4k.hdr"
 };
 #endif
 
@@ -257,115 +260,23 @@ int main(int argc, char** argv)
     RenderPosition position = RenderPosition::DEFAULT;
     RenderResolution resolution = RenderResolution::DEFAULT;
 
-    if (argc > 1) {
-        bool expectSky = false;
-        bool expectName = false;
-        bool expectDirectory = false;
-        bool expectPosition = false;
-        bool expectResolution = false;
-        bool expectExposure = false;
-        bool expectIntensity = false;
+    ArgumentParser::AddOption("-h", [&](const std::string&) {
+        printHelp();
+        imgPaths.clear();
+        exit(EXIT_SUCCESS);
+    });
+    ArgumentParser::AddOptionWithIndex("-f", [&](int& i, int argc, char* argv[]) { ++i; processFileArguments(i, argc, argv, imgPaths); });
+    ArgumentParser::AddOption("-n", [&](const std::string& value) { processNameArgument(value, fileName); }, true);
+    ArgumentParser::AddOption("-d", [&](const std::string& value) { processDirectoryArgument(value, saveDir); }, true);
+    ArgumentParser::AddOption("-p", [&](const std::string& value) { processPositionArgument(value, position); }, true);
+    ArgumentParser::AddOption("-s", [&](const std::string& value) { processSkyArgument(value, sky); }, true);
+    ArgumentParser::AddOption("-r", [&](const std::string& value) { processResolutionArgument(value, resolution); }, true);
+    ArgumentParser::AddOption("-e", [&](const std::string& value) { processExposureArgument(value, exposure, isExposureSet); }, true);
+    ArgumentParser::AddOption("-i", [&](const std::string& value) { processIntensityArgument(value, colorIntensity, isIntensitySet); }, true);
+    ArgumentParser::AddOption("-v", [&](const std::string&) { Config::SetVerbose(true); });
+    ArgumentParser::AddOption("-I", [&](const std::string&) { Config::SetInteractive(true); });
 
-        for (int i = 1; i < argc; ++i) {
-            std::string arg = argv[i];
-
-            if (arg == "-h") {
-                printHelp();
-                imgPaths.clear();
-                return 0;
-            }
-
-            if (arg == "-f") {
-                ++i;
-                processFileArguments(i, argc, argv, imgPaths);
-            }
-            else if (expectName) {
-                processNameArgument(arg, fileName);
-                expectName = false;
-            }
-            else if (expectDirectory) {
-                processDirectoryArgument(arg, saveDir);
-                expectDirectory = false;
-            }
-            else if (expectPosition) {
-                processPositionArgument(arg, position);
-                expectPosition = false;
-            }
-            else if (expectSky) {
-                processSkyArgument(arg, sky);
-                expectSky = false;
-            }
-            else if (expectResolution) {
-                processResolutionArgument(arg, resolution);
-                expectResolution = false;
-            }
-            else if (expectExposure) {
-                processExposureArgument(arg, exposure, isExposureSet);
-                expectExposure = false;
-            }
-            else if (expectIntensity) {
-                processIntensityArgument(arg, colorIntensity, isIntensitySet);
-                expectIntensity = false;
-            }
-            else if (arg == "-n") {
-                expectName = true;
-            }
-            else if (arg == "-d") {
-                expectDirectory = true;
-            }
-            else if (arg == "-p") {
-                expectPosition = true;
-            }
-            else if (arg == "-s") {
-                expectSky = true;
-            }
-            else if (arg == "-r") {
-                expectResolution = true;
-            }
-            else if (arg == "-e") {
-                expectExposure = true;
-            }
-            else if (arg == "-i") {
-                expectIntensity = true;
-            }
-            else if (arg == "-v") {
-                Config::SetVerbose(true);
-            }
-            else if (arg == "-I") {
-                Config::SetInteractive(true);
-            }
-            else {
-                spdlog::warn("Unknown argument: {}", arg);
-            }
-        }
-
-        // Warnings if any expected argument is missing
-        if (expectName) {
-            spdlog::warn("The '-n' prefix was used, but no name was specified!");
-        }
-        if (expectDirectory) {
-            spdlog::warn("The '-d' prefix was used, but no directory path was specified!");
-        }
-        if (expectPosition) {
-            spdlog::warn("The '-p' prefix was used, but no position was specified!");
-        }
-        if (expectSky) {
-            spdlog::warn("The '-s' prefix was used, but no skybox was specified!");
-        }
-        if (expectResolution) {
-            spdlog::warn("The '-r' prefix was used, but no resolution was specified!");
-        }
-        if (expectExposure) {
-            spdlog::warn("The '-e' prefix was used, but no exposure was specified!");
-        }
-        if (expectIntensity) {
-            spdlog::warn("The '-i' prefix was used, but no color intensity was specified!");
-        }
-
-    }
-    else {
-        spdlog::info("No arguments were passed to the program.");
-    }
+    ArgumentParser::Parse(argc, argv);
 
     interpretResolutionValue(resolution);
 
@@ -488,6 +399,8 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+#else
+    ArgumentParser::Deinit();
 #endif
 
     glfwDestroyWindow(window);
@@ -531,6 +444,22 @@ bool init()
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
+
+    GLFWimage images[1];
+    std::string path = std::string(exeDirPath).append("\\").append(iconPath);
+
+    images[0].pixels = stbi_load(path.c_str(), &images[0].width, &images[0].height, NULL, 4); //rgba channels
+
+    if (!images[0].pixels) {
+
+        spdlog::error("Failed to load Icon: {}", path);
+
+        stbi_image_free(images[0].pixels);
+
+        return false;
+    }
+    glfwSetWindowIcon(window, 1, images);
+    stbi_image_free(images[0].pixels);
 
     bool err = !gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -939,7 +868,9 @@ void init_imgui()
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Setup style
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsNeon();
+    ImGui::StyleSizesNeon();
+    //ImGui::StyleColorsDark();
     //ImGui::StyleColorsClassic();
 
     // Load Fonts
@@ -968,11 +899,16 @@ void imgui_begin()
 
 void imgui_render()
 {
+    static bool _helpOpen = true;
     static bool _skyboxOpen = true;
     static bool _cameraOpen = true;
     static std::string modelFolderPath = std::string(exeDirPath).append("\\res\\model");
     static std::string screenFolderPath = std::string(exeDirPath).append("\\Screenshots");
     static std::string textureFolderPath = std::string(exeDirPath).append("\\res\\textures");
+    static std::string skyboxFolderPath = std::string(exeDirPath).append("\\res\\skybox");
+    static bool showSavedPopup = false;
+    static bool showErrorPopup = false;
+    static std::string lastScreenshotName = "";
 
     if (!ImGui::Begin("PBR VISUALISER", nullptr, ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
@@ -988,6 +924,9 @@ void imgui_render()
         }
 
         if (ImGui::BeginMenu("Windows##Menu")) {
+            if (ImGui::MenuItem("Help", 0, &_helpOpen)) {
+                _helpOpen = true;
+            }
             if (ImGui::MenuItem("Skybox", 0, &_skyboxOpen)) {
                 _skyboxOpen = true;
             }
@@ -1002,15 +941,10 @@ void imgui_render()
 
     if (ImGui::Button("Save Screenshot")) {
 
-        std::string screenFolderPath = std::string(exeDirPath).append("\\").append("Screenshots");
-
         bool exist = false;
         struct stat info;
-        if (stat(screenFolderPath.c_str(), &info) != 0) {
-            exist = false;  // Folder nie istnieje
-        }
-        else if (info.st_mode & S_IFDIR) {
-            exist = true;   // Istnieje i jest folderem
+        if (stat(screenFolderPath.c_str(), &info) == 0 && (info.st_mode & S_IFDIR)) {
+            exist = true; // Istnieje i jest folderem
         }
 
         if (!exist) {
@@ -1019,14 +953,56 @@ void imgui_render()
                 exist = true;
             }
             else {
+                showErrorPopup = true;
                 spdlog::error("Directory '{}' couldn't have been created!", screenFolderPath);
-                exist = false;
             }
         }
 
-        if (exist) Camera::SaveScreenshot(screenFolderPath);
-        else spdlog::error("Failed to save screenshot!");
+        if (exist) {
+            std::pair<bool, std::string> values = Camera::SaveScreenshot(screenFolderPath);
+            if (values.first) {
+                lastScreenshotName = values.second;
+                showSavedPopup = true;
+            }
+            else {
+                showErrorPopup = true;
+                spdlog::error("Failed to save screenshot!");
+            }
+        }
+        else {
+            showErrorPopup = true;
+            spdlog::error("Failed to save screenshot!");
+        }
     }
+
+    auto ShowPopup = [](const char* title, const char* message) {
+        if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("%s", message);
+            ImGui::Separator();
+
+            float buttonWidth = ImGui::CalcTextSize("OK").x + 20.0f;
+            float offsetX = (ImGui::GetWindowSize().x - buttonWidth) * 0.5f;
+            ImGui::SetCursorPosX(offsetX);
+
+            if (ImGui::Button("OK", ImVec2(buttonWidth, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+    };
+
+    if (showSavedPopup) {
+        ImGui::OpenPopup("Screenshot Saved");
+        showSavedPopup = false;
+    }
+
+    if (showErrorPopup) {
+        ImGui::OpenPopup("Screenshot Saved Error");
+        showErrorPopup = false;
+    }
+
+    ShowPopup("Screenshot Saved", ("Screenshot has been saved:\n" + lastScreenshotName).c_str());
+    ShowPopup("Screenshot Error", "An error occurred while saving the screenshot.");
 
     std::string sType = to_string(shapeType);
     std::replace(sType.begin(), sType.end(), '_', ' ');
@@ -1038,16 +1014,8 @@ void imgui_render()
             std::replace(name.begin(), name.end(), '_', ' ');
             if (ImGui::Selectable(name.c_str(), shapeType == acc))
             {
-                if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit()) {
-                    if (std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath))
-                    {
-                        ModelLoader::OpenImGuiFileDialog(modelFolderPath);
-                    }
-                    else
-                    {
-                        ModelLoader::OpenImGuiFileDialog(exeDirPath);
-                    }
-                }
+                if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit())
+                    ModelLoader::OpenFileDialog(std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath) ? modelFolderPath : exeDirPath);
 
                 set_shape(quadVAO, acc);
                 break;
@@ -1058,18 +1026,10 @@ void imgui_render()
 
     if (ImGui::Button("Upload Model"))
     {
-        if (std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath))
+        if (ModelLoader::OpenFileDialog(std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath) ? modelFolderPath : exeDirPath)) 
         {
-            ModelLoader::OpenImGuiFileDialog(modelFolderPath);
+            set_shape(quadVAO, shapeType);
         }
-        else
-        {
-            ModelLoader::OpenImGuiFileDialog(exeDirPath);
-        }
-    }
-
-    if (ModelLoader::ShowImGuiFileDialog()) {
-        set_shape(quadVAO, shapeType);
     }
 
     ImGui::SameLine();
@@ -1103,10 +1063,25 @@ void imgui_render()
         ImGui::BeginGroup();
         if (ImGui::Button(("Load Image " + imageName[i]).c_str()))
         {
-            openFileDialogs[i] = true;
-            fileDialogInfos[i].title = "Choose " + imageName[i] + " image";
-            fileDialogInfos[i].type = ImGuiFileDialogType_OpenFile;
-            fileDialogInfos[i].directoryPath = std::filesystem::exists(textureFolderPath) && std::filesystem::is_directory(textureFolderPath) ? textureFolderPath : exeDirPath;
+            std::string openPath = std::filesystem::exists(textureFolderPath) && std::filesystem::is_directory(textureFolderPath) ? textureFolderPath : exeDirPath;
+
+            const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
+            const char* filePath = tinyfd_openFileDialog(
+                ("Choose " + imageName[i] + " image").c_str(),
+                openPath.c_str(),
+                3, filters, "Image Files", 0);
+
+            if (filePath)
+            {
+                TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
+                TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
+                imageTextures[i] = new Texture2D(filePath, inter, form);
+
+                if (!imageTextures[i]->IsInit()) {
+                    delete imageTextures[i];
+                    imageTextures[i] = nullptr;
+                }
+            }
         }
 
         if (ImGui::Button(("Reset##" + imageName[i]).c_str()))
@@ -1115,16 +1090,6 @@ void imgui_render()
             imageTextures[i] = nullptr;
         }
         ImGui::EndGroup();
-
-        if (openFileDialogs[i])
-        {
-            if (ImGui::FileDialog(&openFileDialogs[i], &fileDialogInfos[i]))
-            {
-                TextureFileFormat inter = i == 0 ? TextureFileFormat::SRGB : i == 1 ? TextureFileFormat::RGB : TextureFileFormat::RED;
-                TextureFormat form = i == 0 ? TextureFormat::RGB : i == 1 ? TextureFormat::RGB : TextureFormat::RED;
-                imageTextures[i] = new Texture2D(fileDialogInfos[i].resultPath.string().c_str(), inter, form);
-            }
-        }
 
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 130);
 
@@ -1146,9 +1111,71 @@ void imgui_render()
 
     ImGui::End();
 
-    if (_skyboxOpen) Skybox::DrawEditor(&_skyboxOpen);
-    if (_cameraOpen) Camera::DrawEditor(&_cameraOpen);
+    drawHelp(&_helpOpen);
+    Skybox::DrawEditor(&_skyboxOpen, skyboxFolderPath);
+    Camera::DrawEditor(&_cameraOpen);
 }
+
+void drawHelp(bool* open)
+{
+    static Texture2D* icon = nullptr;
+
+    if (!*open) return;
+
+    if (!ImGui::Begin("Help Window", open)) {
+        ImGui::End();
+        return;
+    }
+
+    if (!icon) {
+        std::string path = std::string(exeDirPath).append("\\").append(iconPath);
+        icon = new Texture2D(path.c_str(), TextureFileFormat::RGBA, TextureFormat::RGBA);
+    }
+
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    float iconSize = 128.f;
+    float bannerWidth = ImGui::CalcTextSize("   ___  ___  ___    _   ___               ___            ").x;
+    float groupWidth = iconSize + 7.f + bannerWidth;
+    float groupX = (windowSize.x - groupWidth) * 0.5f;
+
+    ImGui::SetCursorPosX(groupX);
+    if (icon) {
+        ImGui::Image((intptr_t)icon->GetId(), ImVec2(iconSize, iconSize));
+    }
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(groupX + iconSize + 7.f);
+    ImGui::BeginGroup();
+    ImGui::Text("   ___  ___  ___    _   ___               ___            ");
+    ImGui::Text("  / _ \\/ _ )/ _ \\  | | / (_)__ __ _____ _/ (_)__ ___ ____ ");
+    ImGui::Text(" / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/ ");
+    ImGui::Text("/_/  /____/_/|_|   |___/_/___/\\_,_/\\_,_/_/_/___/\\__/_/    ");
+
+    std::string text = std::string("Version: ").append(PBR_VISUALISER_VERSION_STR);
+    float textWidth = ImGui::CalcTextSize(text.c_str()).x;
+    float textX = (windowSize.x - textWidth + iconSize) * 0.5f;
+    ImGui::SetCursorPosX(textX);
+    ImGui::Text(text.c_str());
+    text = std::string("Author: Marceli Antosik");
+    textWidth = ImGui::CalcTextSize(text.c_str()).x;
+    textX = (windowSize.x - textWidth + iconSize) * 0.5f;
+    ImGui::SetCursorPosX(textX);
+    ImGui::Text(text.c_str());
+    ImGui::EndGroup();
+
+    ImGui::Separator();
+    ImGui::Text("Press 'Left ALT' to toggle between UI cursor mode and Camera movement mode.");
+    ImGui::Text("In Camera movement mode, you can look around the scene and move using WSAD.");
+
+    ImGui::Separator();
+    ImGui::Text("Use the following keys to move the Camera:");
+    ImGui::BulletText("W - Move Forward");
+    ImGui::BulletText("S - Move Backward");
+    ImGui::BulletText("A - Move Left");
+    ImGui::BulletText("D - Move Right");
+
+    ImGui::End();
+}
+
 
 void imgui_end()
 {
@@ -1207,8 +1234,8 @@ void printHelp() {
     spdlog::info("  PBR_Visualiser.exe ([-h] | [-I] | [-v] [-f <albedo_path> <normal_path> ...] [-n <output_name>] [-d <directory_path>] [-p <position>] [-s <skybox>] [-r <resolution>] [-e <exposure_value>] [-i <color_intensity>])");
     spdlog::info("Options:");
     spdlog::info("  -h                   Display this help message and exit.");
-    spdlog::info("  -I                   Turns on the interactive mode where the user will be asked one by one to provide the values ​​needed to generate the image.");
-    spdlog::info("                       If the user provides these values ​​through the call arguments, they will be included when generating the first image.");
+    spdlog::info("  -I                   Turns on the interactive mode where the user will be asked one by one to provide the values needed to generate the image.");
+    spdlog::info("                       If the user provides these values through the call arguments, they will be included when generating the first image.");
     spdlog::info("                       After each generated image, the user will be asked whether he wants to generate another image.");
     spdlog::info("  -v                   Throws more detailed information as output to the console");
     spdlog::info("  -f <image_path>      Specify up to 6 image paths to process. Additional paths will be ignored.");
@@ -1218,7 +1245,7 @@ void printHelp() {
     spdlog::info("  -d <directory_path>  Specify the directory where files will be saved. Default is the current executable path.");
     spdlog::info("  -p <position>        Specify the position of the plane in world. Accepted values: top, bottom, front, back, right, left.");
     spdlog::info("                       Default position is 'back'.");
-    spdlog::info("  -s <skybox>          Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.");
+    spdlog::info("  -s <skybox>          Specify the skybox texture. Accepted values: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night, golden_bay.");
     spdlog::info("                       Default skybox texture is 'park'.");
     spdlog::info("  -r <resolution>      Specify the resolution of the output image. Accepted values: r128, r256, r512, r1k, r2k, r4k.");
     spdlog::info("                       Default resolution is 'r2k'.");
@@ -1259,7 +1286,7 @@ void processFileArguments(int& i, int argc, char** argv, std::vector<std::string
 
 void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
 {
-    static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night" };
+    static const std::vector<std::string> validSkyboxes = { "park", "hill", "photostudio", "bathroom", "moonless_golf", "snowy_field", "venice_sunset", "satara_night", "golden_bay" };
 
     if (sky != SkyboxEnum::DEFAULT) {
         spdlog::warn("Skybox has already been specified! Ignoring additional resolution.");
@@ -1279,7 +1306,7 @@ void processSkyArgument(const std::string& arg, SkyboxEnum& sky)
         return;
     }
     else {
-        spdlog::warn("Invalid skybox argument: '{}'. Accepted values are: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night.", arg);
+        spdlog::warn("Invalid skybox argument: '{}'. Accepted values are: park, hill, photostudio, bathroom, moonless_golf, snowy_field, venice_sunset, satara_night, golden_bay.", arg);
         return;
     }
 }
@@ -1459,7 +1486,7 @@ void processFileInput(std::vector<std::string>& imgPaths)
 
 void processSkyInput(SkyboxEnum& sky)
 {
-    static const std::vector<std::string> skyboxes = { "Park", "Hill", "Photostudio", "Bathroom", "Moonless Golf", "Snowy Field", "Venice Sunset", "Satara Night" };
+    static const std::vector<std::string> skyboxes = { "Park", "Hill", "Photostudio", "Bathroom", "Moonless Golf", "Snowy Field", "Venice Sunset", "Satara Night", "Golden Bay" };
 
     if (sky != SkyboxEnum::DEFAULT) {
         spdlog::info("Skybox was already specified! Selected skybox: {}", to_string(sky));

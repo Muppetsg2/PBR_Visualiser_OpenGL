@@ -141,6 +141,7 @@ private:
 	TextureFilterMode _minFilterMode;
 	TextureFilterMode _magFilterMode;
 	
+	int GetChannelsFromFileFormat(TextureFileFormat fileFormat);
 	void GenerateGLTexture(const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool detectFormat);
 	void LoadTextureFromFile(const GLchar* path, const TextureFileFormat& fileFormat, const TextureFormat& format, const TextureWrapMode& sWrapMode, const TextureWrapMode& tWrapMode, const TextureFilterMode& minFilterMode, const TextureFilterMode& magFilterMode, bool flip, bool detectFormat);
 
