@@ -28,7 +28,7 @@
 - [📜 License](#-license)
 
 ## 🌐 Acknowledgments
-- 📦 **Sample materials**: [ambient.cg](https://ambient.cg/)
+- 📦 **Sample materials**: [ambientCG](https://ambientcg.com/)
 - 🌅 **Skyboxes**:
     - HDR files: [polyhaven.com](https://polyhaven.com/)
     - Park: [www.humus.name](http://www.humus.name/)
