@@ -117,7 +117,8 @@ if __name__ == "__main__":
             ],
             "toRemove": [
                 "res\\textures\\Rock051_2K-PNG\\Rock051.png",
-                "res\\textures\\Rock051_2K-PNG\\Rock051_2K-PNG_NormalDX.png"
+                "res\\textures\\Rock051_2K-PNG\\Rock051_2K-PNG_NormalDX.png",
+                "res\\skybox\\Park\\Park_data"
             ],
             "toMove": [
                 ("res\\model\\glft\\lamp.glb", "res\\model\\lamp.glb")
