@@ -27,15 +27,15 @@
 // - fixed errors while changing skybox in window build
 // - fixed cleaning faces when closing window to load faces as skybox in window build
 // - changed file dialogs from ImGui FileDialogs to tinyfiledialogs in window build
-// - changed names of park skybox faces
+// - changed names of Park skybox faces
 // - added checking whether a window is open in imgui window drawing functions in window build
 // - python file has been added that prepares applications for public release
 // - added information on how to move around the scene in window build
 // - added README.md
 // - added Icon
 // - updated file with examples
-// - changed imgui look
-// - fixed bug with not applying filter on screenshot
+// - changed imgui look in window build
+// - fixed bug with not applying filter on screenshot in window build
 //
 // --- 1.3.2 ---
 // - deleted skybox draw function in console build
