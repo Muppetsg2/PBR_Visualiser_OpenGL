@@ -31,7 +31,7 @@
 // - added checking whether a window is open in imgui window drawing functions in window build
 // - python file has been added that prepares applications for public release
 // - added information on how to move around the scene in window build
-// - added Readme.md
+// - added README.md
 // - added Icon
 // - updated file with examples
 // - changed imgui look
