@@ -28,7 +28,7 @@
 // - fixed cleaning faces when closing window to load faces as skybox in window build
 // - changed file dialogs from ImGui FileDialogs to tinyfiledialogs in window build
 // - changed names of park skybox faces
-// - added checking whether a window is open in window drawing functions in window build
+// - added checking whether a window is open in imgui window drawing functions in window build
 // - python file has been added that prepares applications for public release
 // - added information on how to move around the scene in window build
 // - added Readme.md
