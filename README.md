@@ -136,6 +136,11 @@ For more examples, see [Examples.md](./Examples.md).
 ## 📜 License
 📝 This project is **MIT Licensed**.
 
+📖 **MIT License Overview:**
+- ✅ Free to use, modify, and distribute.
+- ✅ Can be used in **commercial** and **non-commercial** projects.
+- ❗ Must include original license and copyright.
+
 See the [LICENSE](./LICENSE) file for more details.
 
 ---
