@@ -598,9 +598,15 @@ bool ModelLoader::OpenFileDialog(std::string path)
 
     if (filePath)
     {
-        ModelLoader::LoadModel(filePath);
-        return true;
+        if (ModelLoader::LoadModel(filePath)) {
+            return true;
+        }
+        else {
+            ImGui::OpenPopup("Error Loading Model");
+        }
     }
+
+    ImGui::ShowErrorPopup("Error Loading Model", "Failed to load 3D Model. Please check the file and try again.");
 
     return false;
 }

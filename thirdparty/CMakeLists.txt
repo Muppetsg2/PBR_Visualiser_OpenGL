@@ -25,11 +25,10 @@ target_include_directories(stb_image_write PRIVATE ${STB_IMAGE_WRITE_DIR})
 # other
 CPMAddPackage("gh:glfw/glfw#3.4")
 CPMAddPackage("gh:g-truc/glm#1.0.1")
-# CPMAddPackage("gh:g-truc/gli#0.8.2.0")
 CPMAddPackage(
-  NAME gli
-  GIT_REPOSITORY https://github.com/g-truc/gli.git
-  GIT_TAG master
+    NAME gli
+    GIT_REPOSITORY https://github.com/g-truc/gli.git
+    GIT_TAG master
 )
 CPMAddPackage("gh:gabime/spdlog@1.15.1")
 
@@ -47,10 +46,16 @@ if(WINDOW_APP)
     target_include_directories(tiny_obj_loader PRIVATE ${TINY_OBJ_LOADER_DIR})
 
     # tiny_file_dialogs
-    set(TINY_FILE_DIALOGS_DIR ${CMAKE_CURRENT_LIST_DIR}/tiny_file_dialogs)
-    set(tiny_file_dialogs_SOURCE_DIR ${TINY_FILE_DIALOGS_DIR} CACHE INTERNAL "")
-    add_library(tiny_file_dialogs STATIC ${TINY_FILE_DIALOGS_DIR}/tinyfiledialogs.c)
-    target_include_directories(tiny_file_dialogs PRIVATE ${TINY_FILE_DIALOGS_DIR})
+    CPMAddPackage(
+        NAME tiny_file_dialogs
+        GIT_REPOSITORY https://git.code.sf.net/p/tinyfiledialogs/code
+        GIT_TAG master
+    )
+
+    set(tiny_file_dialogs_SOURCE_DIR ${tiny_file_dialogs_SOURCE_DIR} CACHE INTERNAL "")
+    add_library(tiny_file_dialogs STATIC ${tiny_file_dialogs_SOURCE_DIR}/tinyfiledialogs.c)
+
+    CPMAddPackage("gh:freetype/freetype#VER-2-13-3")
 
     CPMAddPackage("gh:ocornut/imgui@1.91.8-docking")
 
@@ -60,8 +65,16 @@ if(WINDOW_APP)
 					         ${imgui_SOURCE_DIR}/imgui_draw.cpp
 						     ${imgui_SOURCE_DIR}/imgui_tables.cpp
 					         ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+
+    target_compile_definitions(imgui PUBLIC IMGUI_ENABLE_FREETYPE)
+    target_compile_definitions(imgui PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
+    target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD)
+
+    set(imgui_FREETYPE_SOURCE ${imgui_SOURCE_DIR}/misc/freetype/imgui_freetype.cpp CACHE INTERNAL "")
+    set(imgui_BACKEND_SOURCE ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp CACHE INTERNAL "")
     
     set_target_properties(imgui
+                          freetype
                           cgltf 
                           tiny_obj_loader 
                           tiny_file_dialogs PROPERTIES FOLDER "thirdparty")

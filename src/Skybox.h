@@ -77,9 +77,9 @@ public:
     static void SetExposure(float value);
     static void SetColorIntensity(float value);
 
-    static void ChangeTexture(const GLchar* hdr);
+    static bool ChangeTexture(const GLchar* hdr);
 #if WINDOW_APP
-    static void ChangeTexture(const GLchar* faces[6]);
+    static bool ChangeTexture(const GLchar* faces[6]);
     static void DrawEditor(bool* open, std::string skyboxDir);
     static void DrawSkyboxFacesLoader(bool* open, std::string skyboxDir);
 #endif

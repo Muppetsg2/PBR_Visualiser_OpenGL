@@ -1648,22 +1648,22 @@ void Skybox::SetColorIntensity(float value)
 	_colorIntensity = value;
 }
 
-void Skybox::ChangeTexture(const GLchar* hdr)
+bool Skybox::ChangeTexture(const GLchar* hdr)
 {
 	if (!Skybox::_init) {
 		spdlog::error("Skybox wasn't initialized!");
-		return;
+		return false;
 	}
 
 	if (!(std::filesystem::path(std::string(hdr)).extension().string() == std::string(".hdr"))) {
 		spdlog::error("Image was not a HDR image!");
-		return;
+		return false;
 	}
 
 #if WINDOW_APP
 	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_paths[0]) {
 		if (Config::IsVerbose()) spdlog::info("Skybox already loaded!");
-		return;
+		return true;
 	}
 
 	if (Skybox::_shader == nullptr) {
@@ -1674,7 +1674,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 		delete Skybox::_shader;
 		Skybox::_shader = nullptr;
 		spdlog::error("Skybox shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
@@ -1692,7 +1692,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 #else
 	if (std::filesystem::path(std::string(hdr)).string() == Skybox::_path) {
 		if (Config::IsVerbose()) spdlog::info("Skybox already loaded!");
-		return;
+		return true;
 	}
 
 	Skybox::_path = hdr;
@@ -1701,14 +1701,14 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
-		if (Skybox::LoadSavedDataToChange(res.second)) return;
+		if (Skybox::LoadSavedDataToChange(res.second)) return true;
 #if WINDOW_APP
 		Skybox::_paths[0].clear();
 		Skybox::_hdr = false;
 #else
 		Skybox::_path.clear();
 #endif
-		return;
+		return false;
 	}
 
 	bool isDir = false;
@@ -1753,7 +1753,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 #endif
 
 		spdlog::error("Skybox equirectangular texture failed to load at path: {}", hdr);
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular texture loaded at path: {}", hdr);
@@ -1778,7 +1778,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 #endif
 
 		spdlog::error("Skybox equirectangular shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox equirectangular shader initialized!");
@@ -1804,7 +1804,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 #endif
 
 		spdlog::error("Skybox irradiance shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
@@ -1833,7 +1833,7 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 #endif
 
 		spdlog::error("Skybox prefilter shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
@@ -2019,14 +2019,16 @@ void Skybox::ChangeTexture(const GLchar* hdr)
 	glDeleteRenderbuffers(1, &captureRBO);
 
 	if (isDir) Skybox::SaveData(res.second);
+
+	return true;
 }
 
 #if WINDOW_APP
-void Skybox::ChangeTexture(const GLchar* faces[6])
+bool Skybox::ChangeTexture(const GLchar* faces[6])
 {
 	if (!Skybox::_init) {
 		spdlog::error("Skybox wasn't initialized!");
-		return;
+		return false;
 	}
 
 	if (Skybox::_shader == nullptr) {
@@ -2037,7 +2039,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		delete Skybox::_shader;
 		Skybox::_shader = nullptr;
 		spdlog::error("Skybox shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox shader initialized!");
@@ -2051,10 +2053,11 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 	std::pair<bool, std::string> res = Skybox::CheckFolder();
 
 	if (res.first) {
-		if (Skybox::LoadSavedDataToChange(res.second)) return;
+		if (Skybox::LoadSavedDataToChange(res.second)) return true;
 
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
-		return;
+
+		return false;
 	}
 
 	bool isDir = false;
@@ -2104,7 +2107,8 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 
 	if (err) {
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
-		return;
+
+		return false;
 	}
 
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -2126,7 +2130,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 
 		spdlog::error("Skybox irradiance shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox irradiance shader initialized!");
@@ -2144,7 +2148,7 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 		for (unsigned int i = 0; i < 6; ++i) Skybox::_paths[i].clear();
 
 		spdlog::error("Skybox prefilter shader could not be initialized!");
-		return;
+		return false;
 	}
 
 	if (Config::IsVerbose()) spdlog::info("Skybox prefilter shader initialized!");
@@ -2269,6 +2273,8 @@ void Skybox::ChangeTexture(const GLchar* faces[6])
 	glDeleteRenderbuffers(1, &captureRBO);
 
 	if (isDir) Skybox::SaveData(res.second);
+
+	return true;
 }
 
 void Skybox::DrawEditor(bool* open, std::string skyboxDir)
@@ -2291,9 +2297,11 @@ void Skybox::DrawEditor(bool* open, std::string skyboxDir)
 		if (filePath)
 		{
 			Skybox::_fromData = false;
-			ChangeTexture(filePath);
+			if (ChangeTexture(filePath)) ImGui::OpenPopup("Error Loading Skybox from HDR");
 		}
 	}
+
+	ImGui::ShowErrorPopup("Error Loading Skybox from HDR", "Failed to load Skybox from HDR. Please check the file and try again.");
 
 	static bool _facesOpen = false;
 
@@ -2312,9 +2320,14 @@ void Skybox::DrawEditor(bool* open, std::string skyboxDir)
 		if (folderPath)
 		{
 			Skybox::_fromData = true;
-			LoadSavedDataToChange(folderPath);
+			if (!LoadSavedDataToChange(folderPath)) {
+				Skybox::_fromData = false;
+				ImGui::OpenPopup("Error Loading Skybox from Data");
+			}
 		}
 	}
+
+	ImGui::ShowErrorPopup("Error Loading Skybox from Data", "Failed to load Skybox from Data. Please check the data folder and try again.");
 
 	std::string name;
 	if (Skybox::_fromData) {
@@ -2419,6 +2432,7 @@ void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 				if (!imageTextures[i]->IsInit()) {
 					delete imageTextures[i];
 					imageTextures[i] = nullptr;
+					ImGui::OpenPopup(("Error Loading Image " + std::string(labels[i])).c_str());
 				}
 			}
 		}
@@ -2433,6 +2447,8 @@ void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 			ImGui::SameLine(ImGui::GetContentRegionAvail().x - 130);
 			ImGui::Text("No texture loaded");
 		}
+
+		ImGui::ShowErrorPopup(("Error Loading Image " + std::string(labels[i])).c_str(), ("Failed to load " + std::string(labels[i]) + " image. Please check the file and try again.").c_str());
 	}
 
 

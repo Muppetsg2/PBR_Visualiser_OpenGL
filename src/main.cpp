@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.5
+// Version: 1.3.6
 // Author: Marceli Antosik (Muppetsg2)
-// Last Update: 04.03.2025
+// Last Update: 14.03.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -880,13 +880,15 @@ void init_imgui()
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'misc/fonts/README.txt' for more instructions and details.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
+    io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
+
+    io.Fonts->Build();
 }
 
 void imgui_begin()
@@ -906,8 +908,6 @@ void imgui_render()
     static std::string screenFolderPath = std::string(exeDirPath).append("\\Screenshots");
     static std::string textureFolderPath = std::string(exeDirPath).append("\\res\\textures");
     static std::string skyboxFolderPath = std::string(exeDirPath).append("\\res\\skybox");
-    static bool showSavedPopup = false;
-    static bool showErrorPopup = false;
     static std::string lastScreenshotName = "";
 
     if (!ImGui::Begin("PBR VISUALISER", nullptr, ImGuiWindowFlags_MenuBar)) {
@@ -953,7 +953,7 @@ void imgui_render()
                 exist = true;
             }
             else {
-                showErrorPopup = true;
+                ImGui::OpenPopup("Screenshot Saved Error");
                 spdlog::error("Directory '{}' couldn't have been created!", screenFolderPath);
             }
         }
@@ -962,47 +962,21 @@ void imgui_render()
             std::pair<bool, std::string> values = Camera::SaveScreenshot(screenFolderPath);
             if (values.first) {
                 lastScreenshotName = values.second;
-                showSavedPopup = true;
+                ImGui::OpenPopup("Screenshot Saved");
             }
             else {
-                showErrorPopup = true;
+                ImGui::OpenPopup("Screenshot Saved Error");
                 spdlog::error("Failed to save screenshot!");
             }
         }
         else {
-            showErrorPopup = true;
+            ImGui::OpenPopup("Screenshot Saved Error");
             spdlog::error("Failed to save screenshot!");
         }
     }
 
-    auto ShowPopup = [](const char* title, const char* message) {
-        if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("%s", message);
-            ImGui::Separator();
-
-            float buttonWidth = ImGui::CalcTextSize("OK").x + 20.0f;
-            float offsetX = (ImGui::GetWindowSize().x - buttonWidth) * 0.5f;
-            ImGui::SetCursorPosX(offsetX);
-
-            if (ImGui::Button("OK", ImVec2(buttonWidth, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-    };
-
-    if (showSavedPopup) {
-        ImGui::OpenPopup("Screenshot Saved");
-        showSavedPopup = false;
-    }
-
-    if (showErrorPopup) {
-        ImGui::OpenPopup("Screenshot Saved Error");
-        showErrorPopup = false;
-    }
-
-    ShowPopup("Screenshot Saved", ("Screenshot has been saved:\n" + lastScreenshotName).c_str());
-    ShowPopup("Screenshot Error", "An error occurred while saving the screenshot.");
+    ImGui::ShowPopup("Screenshot Saved", ("Screenshot has been saved:\n`" + lastScreenshotName + "`").c_str());
+    ImGui::ShowPopup("Screenshot Error", "An error occurred while saving the screenshot.");
 
     std::string sType = to_string(shapeType);
     std::replace(sType.begin(), sType.end(), '_', ' ');
@@ -1029,8 +1003,11 @@ void imgui_render()
         if (ModelLoader::OpenFileDialog(std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath) ? modelFolderPath : exeDirPath)) 
         {
             set_shape(quadVAO, shapeType);
+            ImGui::OpenPopup("Model Loaded");
         }
     }
+
+    ImGui::ShowPopup("Model Loaded", ("Model `" + ModelLoader::GetModelName() + "` has been loaded!").c_str());
 
     ImGui::SameLine();
 
@@ -1080,6 +1057,8 @@ void imgui_render()
                 if (!imageTextures[i]->IsInit()) {
                     delete imageTextures[i];
                     imageTextures[i] = nullptr;
+
+                    ImGui::OpenPopup(("Error Loading Image " + std::string(imageName[i])).c_str());
                 }
             }
         }
@@ -1101,6 +1080,8 @@ void imgui_render()
         {
             ImGui::Image((intptr_t)(i >= 2 && i <= 4 ? defaultBlackTexture : defaultWhiteTexture), ImVec2(128, 128));
         }
+
+        ImGui::ShowErrorPopup(("Error Loading Image " + std::string(imageName[i])).c_str(), ("Failed to load " + std::string(imageName[i]) + " image. Please check the file and try again.").c_str());
     }
 
     ImGui::DragFloat("Height", &height_scale, 0.1f, 0.0f, FLT_MAX);

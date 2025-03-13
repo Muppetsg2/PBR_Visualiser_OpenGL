@@ -2,9 +2,9 @@
 
 #define PBR_VISUALISER_VER_MAJOR 1
 #define PBR_VISUALISER_VER_MINOR 3
-#define PBR_VISUALISER_VER_PATCH 5
+#define PBR_VISUALISER_VER_PATCH 6
 
-#define PBR_VISUALISER_LAST_UPDATE "04.03.2025"
+#define PBR_VISUALISER_LAST_UPDATE "14.03.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -16,7 +16,17 @@
 //  / /__/ _ \/ _ `/ _ \/ _ `/ -_) / _ \/ _ `/
 //  \___/_//_/\_,_/_//_/\_, /\__/_/\___/\_, / 
 //                     /___/           /___/  
-//
+// 
+// --- 1.3.6 ---
+// - added popup when error occure while loading faces of skybox in window build
+// - updated tinyfiledialogs in window build
+// - added freetype for handling fonts in window build
+// - add popup when error occure while loading skybox from hdr or data in window build
+// - add popup when error occure while loading 3d model in window build
+// - added popup when model is succesfully loaded in window build
+// - added popup when error occure while loading textures in window build
+// - changed CMake adding thirdparty libraries
+// 
 // --- 1.3.5 ---
 // - added MSAA to window build
 // - added popup when screenshot is saved in window build

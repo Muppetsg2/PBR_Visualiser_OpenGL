@@ -36,7 +36,11 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADER_FILES})
 source_group(TREE ${CMAKE_SOURCE_DIR}         FILES ${ASSETS_FILES})
 
 # Define the executable
-add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES} ${ASSETS_FILES} icon.rc)
+if (WINDOW_APP)
+	add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES} ${imgui_FREETYPE_SOURCE} ${imgui_BACKEND_SOURCE} ${ASSETS_FILES} icon.rc)
+else()
+	add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES} ${ASSETS_FILES} icon.rc)
+endif()
 
 if(MSVC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
@@ -78,6 +82,7 @@ if(WINDOW_APP)
 													   ${tiny_obj_loader_SOURCE_DIR}
 													   ${tiny_file_dialogs_SOURCE_DIR})
 	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui
+												  freetype
 												  cgltf
 												  tiny_obj_loader
 												  tiny_file_dialogs)
