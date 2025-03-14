@@ -19,6 +19,7 @@
 // 
 // --- 1.3.6 ---
 // - added popup when error occure while loading faces of skybox in window build
+// - added popup when error occure when creating skybox from faces in window build
 // - updated tinyfiledialogs in window build
 // - added freetype for handling fonts in window build
 // - add popup when error occure while loading skybox from hdr or data in window build

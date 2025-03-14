@@ -2390,13 +2390,19 @@ void Skybox::DrawEditor(bool* open, std::string skyboxDir)
 
 	ImGui::End();
 
-	Skybox::DrawSkyboxFacesLoader(&_facesOpen, skyboxDir);
+	if (!Skybox::DrawSkyboxFacesLoader(&_facesOpen, skyboxDir)) {
+		ImGui::OpenPopup("Error creating skybox");
+	}
+
+	ImGui::ShowErrorPopup("Error creating skybox", "Failed to create skybox using provided faces. Please check the files and try again.");
 }
 
-void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
+bool Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 {
 	static const char* labels[6] = { "Right", "Left", "Top", "Bottom", "Front", "Back" };
 	static Texture2D* imageTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+
+	bool good = true;
 
 	if (!*open) {
 		if (imageTextures[0]) delete imageTextures[0]; imageTextures[0] = nullptr;
@@ -2405,12 +2411,12 @@ void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 		if (imageTextures[3]) delete imageTextures[3]; imageTextures[3] = nullptr;
 		if (imageTextures[4]) delete imageTextures[4]; imageTextures[4] = nullptr;
 		if (imageTextures[5]) delete imageTextures[5]; imageTextures[5] = nullptr;
-		return;
+		return good;
 	}
 
 	if (!ImGui::Begin("Skybox Faces Loader Window", open)) {
 		ImGui::End();
-		return;
+		return good;
 	}
 
 	for (int i = 0; i < 6; ++i)
@@ -2464,12 +2470,16 @@ void Skybox::DrawSkyboxFacesLoader(bool* open, std::string skyboxDir)
 		};
 
 		Skybox::_fromData = false;
-		ChangeTexture(paths);
+		if (!ChangeTexture(paths)) {
+			good = false;
+		}
 
 		*open = false;
 	}
 	if (isDisabled) ImGui::EndDisabled();
 
 	ImGui::End();
+
+	return good;
 }
 #endif

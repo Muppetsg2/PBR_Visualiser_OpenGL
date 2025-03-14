@@ -81,6 +81,6 @@ public:
 #if WINDOW_APP
     static bool ChangeTexture(const GLchar* faces[6]);
     static void DrawEditor(bool* open, std::string skyboxDir);
-    static void DrawSkyboxFacesLoader(bool* open, std::string skyboxDir);
+    static bool DrawSkyboxFacesLoader(bool* open, std::string skyboxDir);
 #endif
 };
