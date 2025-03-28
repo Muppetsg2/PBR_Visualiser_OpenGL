@@ -2,9 +2,9 @@
 
 #define PBR_VISUALISER_VER_MAJOR 1
 #define PBR_VISUALISER_VER_MINOR 3
-#define PBR_VISUALISER_VER_PATCH 6
+#define PBR_VISUALISER_VER_PATCH 8
 
-#define PBR_VISUALISER_LAST_UPDATE "14.03.2025"
+#define PBR_VISUALISER_LAST_UPDATE "29.03.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -16,6 +16,11 @@
 //  / /__/ _ \/ _ `/ _ \/ _ `/ -_) / _ \/ _ `/
 //  \___/_//_/\_,_/_//_/\_, /\__/_/\___/\_, / 
 //                     /___/           /___/  
+// 
+// --- 1.3.8 ---
+// - added fbx 3d model loading using OpenFBX library in window build
+// - fixed behaviour when loading 3d model is canceled in window build
+// - added sample fbx and obj models to repository
 // 
 // --- 1.3.6 ---
 // - added popup when error occure while loading faces of skybox in window build

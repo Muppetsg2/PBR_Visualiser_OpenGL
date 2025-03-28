@@ -79,11 +79,13 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glad
 if(WINDOW_APP)
 	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR}
 													   ${cgltf_SOURCE_DIR}
+													   ${openfbx_SOURCE_DIR}
 													   ${tiny_obj_loader_SOURCE_DIR}
 													   ${tiny_file_dialogs_SOURCE_DIR})
 	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui
 												  freetype
 												  cgltf
+												  openfbx
 												  tiny_obj_loader
 												  tiny_file_dialogs)
 endif()

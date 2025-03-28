@@ -11,6 +11,9 @@
 // CGLTF
 #include <cgltf.h>
 
+// OPENFBX
+#include <ofbx.h>
+
 // TINY_OBJ_LOADER
 #include <tiny_obj_loader.h>
 

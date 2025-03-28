@@ -2,7 +2,7 @@
 #include <Vertex.h>
 #include <macros.h>
 
-ENUM_CLASS_BASE_VALUE(ModelFormat, uint8_t, GLTF, 0, OBJ, 1, NONE, 2)
+ENUM_CLASS_BASE_VALUE(ModelFormat, uint8_t, GLTF, 0, OBJ, 1, FBX, 2, NONE, 3)
 
 class ModelLoader {
 private:
@@ -23,6 +23,7 @@ private:
 
 	static bool LoadModelFromGLTF(std::string path);
 	static bool LoadModelFromOBJ(std::string path);
+	static bool LoadModelFromFBX(std::string path);
 
 	ModelLoader() = delete;
 

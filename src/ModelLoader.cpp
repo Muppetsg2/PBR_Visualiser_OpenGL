@@ -424,11 +424,9 @@ bool ModelLoader::LoadModelFromOBJ(std::string path)
     }
 
     // Calculate Tangent and Bitangent (using indices)
-    std::vector<size_t> trisCount;
-    trisCount.resize(ModelLoader::_vertices.size());
+    std::vector<size_t> trisCount(ModelLoader::_vertices.size(), 0);
 
     for (size_t i = 0; i < ModelLoader::_indices.size(); i += 3) {
-
         size_t v1 = ModelLoader::_indices[i];
         size_t v2 = ModelLoader::_indices[i + 1];
         size_t v3 = ModelLoader::_indices[i + 2];
@@ -442,9 +440,9 @@ bool ModelLoader::LoadModelFromOBJ(std::string path)
         ModelLoader::_vertices[v3].Tangent += TB.first;
         ModelLoader::_vertices[v3].Bitangent += TB.second;
 
-        trisCount[v1] += 1;
-        trisCount[v2] += 1;
-        trisCount[v3] += 1;
+        trisCount[v1]++;
+        trisCount[v2]++;
+        trisCount[v3]++;
     }
 
     for (size_t i = 0; i < trisCount.size(); ++i) {
@@ -480,7 +478,163 @@ bool ModelLoader::LoadModelFromOBJ(std::string path)
 
     trisCount.clear();
 
-    ModelLoader::_hasIndices = true;
+    ModelLoader::_hasIndices = !ModelLoader::_indices.empty();
+    ModelLoader::_updateEBO = true;
+
+    return true;
+}
+
+bool ModelLoader::LoadModelFromFBX(std::string path)
+{
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file) {
+        spdlog::error("Failed to open FBX file: {}", path);
+        return false;
+    }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if (size <= 0) {
+        spdlog::error("FBX file is empty: {}", path);
+        return false;
+    }
+
+    std::vector<unsigned char> buffer(size);
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
+        spdlog::error("Failed to read FBX file: {}", path);
+        return false;
+    }
+
+    file.close();
+
+    constexpr ofbx::LoadFlags flags =
+        ofbx::LoadFlags::IGNORE_ANIMATIONS  |
+        ofbx::LoadFlags::IGNORE_BONES       |
+        ofbx::LoadFlags::IGNORE_CAMERAS     |
+        ofbx::LoadFlags::IGNORE_LIGHTS      |
+        ofbx::LoadFlags::IGNORE_LIMBS       |
+        ofbx::LoadFlags::IGNORE_POSES       |
+        ofbx::LoadFlags::IGNORE_SKIN        |
+        ofbx::LoadFlags::IGNORE_PIVOTS      |
+        ofbx::LoadFlags::IGNORE_VIDEOS;
+
+    ofbx::IScene* scene = ofbx::load(buffer.data(), size, (ofbx::u16)flags);
+    if (!scene) {
+        spdlog::error("Failed to parse FBX file: {}", path);
+        return false;
+    }
+
+    ModelLoader::_vertices.clear();
+    ModelLoader::_indices.clear();
+
+    for (size_t i = 0; i < scene->getMeshCount(); ++i) {
+        const ofbx::Mesh* mesh = scene->getMesh(i);
+        if (!mesh) continue;
+        const ofbx::GeometryData& geom = mesh->getGeometryData();
+        const ofbx::Vec3Attributes& positions = geom.getPositions();
+        const ofbx::Vec3Attributes& normals = geom.getNormals();
+        const ofbx::Vec2Attributes& uvs = geom.getUVs();
+
+        if (!positions.values || !positions.indices || !normals.values || !uvs.values) {
+            spdlog::warn("Skipping mesh due to missing necessary attributes.");
+            continue;
+        }
+
+        size_t indices_offset = ModelLoader::_vertices.size();
+        for (size_t partition_idx = 0; partition_idx < geom.getPartitionCount(); ++partition_idx) {
+            const ofbx::GeometryPartition& partition = geom.getPartition(partition_idx);
+
+            // partitions most likely have several polygons, they are not triangles necessarily, use ofbx::triangulate if you want triangles
+            for (size_t polygon_idx = 0; polygon_idx < partition.polygon_count; ++polygon_idx) {
+                const ofbx::GeometryPartition::Polygon& polygon = partition.polygons[polygon_idx];
+
+                for (int i = polygon.from_vertex; i < polygon.from_vertex + polygon.vertex_count; ++i) {
+                    ModelLoader::_vertices.push_back(Vertex{
+                        .Position = glm::vec3(positions.get(i).x, positions.get(i).y, positions.get(i).z),
+                        .TexCoords = glm::vec2(uvs.get(i).x, uvs.get(i).y),
+                        .Normal = glm::vec3(normals.get(i).x, normals.get(i).y, normals.get(i).z)
+                    });
+                }
+            }
+
+            for (size_t polygon_idx = 0; polygon_idx < partition.polygon_count; ++polygon_idx) {
+                const ofbx::GeometryPartition::Polygon& polygon = partition.polygons[polygon_idx];
+
+                int* indices = new int[3 * (polygon.vertex_count - 2)];
+                size_t indices_size = ofbx::triangulate(geom, polygon, indices);
+
+                for (size_t i = 0; i < indices_size; ++i) {
+                    ModelLoader::_indices.push_back(indices_offset + indices[i]);
+                }
+
+                delete[] indices;
+            }
+        }
+    }
+    scene->destroy();
+
+    if (ModelLoader::_vertices.empty() || ModelLoader::_indices.empty()) {
+        spdlog::error("Loaded FBX file did not contain needed mesh data.");
+        return false;
+    }
+
+    // Calculate Tangent and Bitangent (using indices)
+    std::vector<size_t> trisCount(ModelLoader::_vertices.size(), 0);
+
+    for (size_t i = 0; i < ModelLoader::_indices.size(); i += 3) {
+        size_t v1 = ModelLoader::_indices[i];
+        size_t v2 = ModelLoader::_indices[i + 1];
+        size_t v3 = ModelLoader::_indices[i + 2];
+
+        std::pair<glm::vec3, glm::vec3> TB = ModelLoader::CalcTangentBitangent(v1, v2, v3);
+
+        ModelLoader::_vertices[v1].Tangent += TB.first;
+        ModelLoader::_vertices[v1].Bitangent += TB.second;
+        ModelLoader::_vertices[v2].Tangent += TB.first;
+        ModelLoader::_vertices[v2].Bitangent += TB.second;
+        ModelLoader::_vertices[v3].Tangent += TB.first;
+        ModelLoader::_vertices[v3].Bitangent += TB.second;
+
+        trisCount[v1]++;
+        trisCount[v2]++;
+        trisCount[v3]++;
+    }
+
+    for (size_t i = 0; i < trisCount.size(); ++i) {
+
+        if (ModelLoader::_vertices[i].Tangent == glm::vec3(0.0f)) {
+
+            glm::vec3 U;
+            if (glm::abs(ModelLoader::_vertices[i].Normal.x) > 0.9f) {
+                U = glm::vec3(0.f, 1.f, 0.f);
+            }
+            else if (glm::abs(ModelLoader::_vertices[i].Normal.y) > 0.9f) {
+                U = glm::vec3(0.f, 0.f, 1.f);
+            }
+            else {
+                U = glm::vec3(1.f, 0.f, 0.f);
+            }
+
+            ModelLoader::_vertices[i].Tangent = glm::normalize(glm::cross(U, ModelLoader::_vertices[i].Normal));
+            ModelLoader::_vertices[i].Bitangent = glm::normalize(glm::cross(ModelLoader::_vertices[i].Normal, ModelLoader::_vertices[i].Tangent));
+        }
+        else if (ModelLoader::_vertices[i].Bitangent == glm::vec3(0.0f)) {
+            ModelLoader::_vertices[i].Tangent = glm::normalize(ModelLoader::_vertices[i].Tangent);
+            ModelLoader::_vertices[i].Bitangent = glm::normalize(glm::cross(ModelLoader::_vertices[i].Normal, ModelLoader::_vertices[i].Tangent));
+        }
+        else {
+            ModelLoader::_vertices[i].Tangent /= (float)trisCount[i];
+            ModelLoader::_vertices[i].Bitangent /= (float)trisCount[i];
+
+            ModelLoader::_vertices[i].Tangent = glm::normalize(ModelLoader::_vertices[i].Tangent);
+            ModelLoader::_vertices[i].Bitangent = glm::normalize(ModelLoader::_vertices[i].Bitangent);
+        }
+    }
+
+    trisCount.clear();
+
+    ModelLoader::_hasIndices = !ModelLoader::_indices.empty();
     ModelLoader::_updateEBO = true;
 
     return true;
@@ -489,7 +643,7 @@ bool ModelLoader::LoadModelFromOBJ(std::string path)
 bool ModelLoader::LoadModel(std::string path)
 {
     std::string ext = std::filesystem::path(path).extension().string();
-    if (ext != std::string(".gltf") && ext != std::string(".glb") && ext != std::string(".obj")) {
+    if (ext != std::string(".gltf") && ext != std::string(".glb") && ext != std::string(".obj") && ext != std::string(".fbx")) {
         spdlog::error("ModelLoader does not support this file format.");
         return false;
     }
@@ -497,12 +651,19 @@ bool ModelLoader::LoadModel(std::string path)
     ModelLoader::_vertices.clear();
     ModelLoader::_indices.clear();
     bool res = false;
+    ModelFormat format = ModelFormat::NONE;
 
     if (ext == std::string(".gltf") || ext == std::string(".glb")) {
         res = ModelLoader::LoadModelFromGLTF(path);
+        format = ModelFormat::GLTF;
     }
     else if (ext == std::string(".obj")) {
         res = ModelLoader::LoadModelFromOBJ(path);
+        format = ModelFormat::OBJ;
+    }
+    else if (ext == std::string(".fbx")) {
+        res = ModelLoader::LoadModelFromFBX(path);
+        format = ModelFormat::FBX;
     }
 
     if (res) {
@@ -520,7 +681,7 @@ bool ModelLoader::LoadModel(std::string path)
         }
 
         ModelLoader::_fileName = std::filesystem::path(path).filename().string();
-        ModelLoader::_format = ext == std::string(".obj") ? ModelFormat::OBJ : ModelFormat::GLTF;
+        ModelLoader::_format = format;
     }
 
     ModelLoader::_init = res;
@@ -590,11 +751,11 @@ void ModelLoader::Deinit()
 
 bool ModelLoader::OpenFileDialog(std::string path)
 {
-    const char* filters[] = { "*.obj", "*.glb", "*.gltf" };
+    const char* filters[] = { "*.fbx", "*.obj", "*.glb", "*.gltf" };
     const char* filePath = tinyfd_openFileDialog(
         "Choose 3D Object File",
         path.c_str(),
-        3, filters, "3D Objects (*.obj, *.glb, *.gltf)", 0);
+        3, filters, "3D Objects (*.fbx, *.obj, *.glb, *.gltf)", 0);
 
     if (filePath)
     {

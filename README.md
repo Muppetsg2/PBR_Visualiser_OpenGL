@@ -4,7 +4,7 @@
   <div id="toc">
     <ul style="list-style: none;">
       <summary>
-        <h1>PBR Visualiser 1.3.6</h1>
+        <h1>PBR Visualiser 1.3.8</h1>
       </summary>
     </ul>
   </div>
@@ -41,7 +41,8 @@
 - 🖼️ **GLI** - DDS file support
 - 🏞️ **GLFW** - window & input handling
 - 📜 **spdlog** - logging
-- 📁 **cgltf** - loading GLTF/GLB objects
+- 📂 **cgltf** - loading GLTF/GLB objects
+- 📂 **OpenFBX** - FBX file support
 - 📦 **tiny_obj_loader** - OBJ file support
 - 🖼️ **stbi_image** - image loading (HDR, JPG, PNG)
 - 💾 **stbi_image_write** - image saving
@@ -53,7 +54,7 @@
   - 🟦 Cube
   - 🟡 Sphere
   - 🔶 Plane (adjustable orientation)
-- 📂 **3D Model Import**: OBJ, GLTF, GLB
+- 📂 **3D Model Import**: OBJ, FBX, GLTF, GLB
 - 🖌️ **PBR Texture Support**:
   - 🎨 **Albedo** (RGB)
   - 🌀 **Normal** (RGB)

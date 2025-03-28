@@ -39,6 +39,12 @@ if(WINDOW_APP)
     add_library(cgltf STATIC ${CGLTF_DIR}/cgltf.cpp)
     target_include_directories(cgltf PRIVATE ${CGLTF_DIR})
 
+    # openfbx
+    set(OPENFBX_DIR ${CMAKE_CURRENT_LIST_DIR}/openfbx)
+    set(openfbx_SOURCE_DIR ${OPENFBX_DIR} CACHE INTERNAL "")
+    add_library(openfbx STATIC ${OPENFBX_DIR}/libdeflate.c ${OPENFBX_DIR}/ofbx.cpp)
+    target_include_directories(openfbx PRIVATE ${OPENFBX_DIR})
+
     # tiny_obj_loader
     set(TINY_OBJ_LOADER_DIR ${CMAKE_CURRENT_LIST_DIR}/tiny_obj_loader)
     set(tiny_obj_loader_SOURCE_DIR ${TINY_OBJ_LOADER_DIR} CACHE INTERNAL "")
@@ -56,7 +62,6 @@ if(WINDOW_APP)
     add_library(tiny_file_dialogs STATIC ${tiny_file_dialogs_SOURCE_DIR}/tinyfiledialogs.c)
 
     CPMAddPackage("gh:freetype/freetype#VER-2-13-3")
-
     CPMAddPackage("gh:ocornut/imgui@1.91.8-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
@@ -75,8 +80,9 @@ if(WINDOW_APP)
     
     set_target_properties(imgui
                           freetype
-                          cgltf 
-                          tiny_obj_loader 
+                          cgltf
+                          openfbx
+                          tiny_obj_loader
                           tiny_file_dialogs PROPERTIES FOLDER "thirdparty")
 endif()
 

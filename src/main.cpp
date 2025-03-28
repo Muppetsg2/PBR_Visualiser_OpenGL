@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.6
+// Version: 1.3.8
 // Author: Marceli Antosik (Muppetsg2)
-// Last Update: 14.03.2025
+// Last Update: 29.03.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -980,6 +980,7 @@ void imgui_render()
 
     std::string sType = to_string(shapeType);
     std::replace(sType.begin(), sType.end(), '_', ' ');
+    bool loadedPopup = false;
     if (ImGui::BeginCombo("Shape", sType.c_str()))
     {
         for (size_t i = 0; i < size<ShapeType>(); ++i) {
@@ -988,14 +989,26 @@ void imgui_render()
             std::replace(name.begin(), name.end(), '_', ' ');
             if (ImGui::Selectable(name.c_str(), shapeType == acc))
             {
-                if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit())
-                    ModelLoader::OpenFileDialog(std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath) ? modelFolderPath : exeDirPath);
+                bool change = true;
+                if (acc == ShapeType::Loaded_Model && !ModelLoader::IsInit()) {
+                    if (!ModelLoader::OpenFileDialog(std::filesystem::exists(modelFolderPath) && std::filesystem::is_directory(modelFolderPath) ? modelFolderPath : exeDirPath)) {
+                        change = false;
+                    }
+                    else {
+                        loadedPopup = true;
+                    }
+                }
 
-                set_shape(quadVAO, acc);
+                if (change) set_shape(quadVAO, acc);
                 break;
             }
         }
         ImGui::EndCombo();
+    }
+
+    if (loadedPopup) {
+        ImGui::OpenPopup("Model Loaded");
+        loadedPopup = false;
     }
 
     if (ImGui::Button("Upload Model"))
