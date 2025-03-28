@@ -4,19 +4,19 @@ include(CPM)
 # OpenGL
 find_package(OpenGL REQUIRED)
 
-# glad
+# glad https://glad.dav1d.de/
 set(GLAD_DIR ${CMAKE_CURRENT_LIST_DIR}/glad)
 set(glad_SOURCE_DIR ${GLAD_DIR}/include CACHE INTERNAL "")
 add_library(glad STATIC ${GLAD_DIR}/src/glad.c)
 target_include_directories(glad PRIVATE ${GLAD_DIR}/include)
 
-# stb_image
+# stb_image https://github.com/nothings/stb
 set(STB_IMAGE_DIR ${CMAKE_CURRENT_LIST_DIR}/stb_image)
 set(stb_image_SOURCE_DIR ${STB_IMAGE_DIR} CACHE INTERNAL "")
 add_library(stb_image STATIC ${STB_IMAGE_DIR}/stb_image.cpp)
 target_include_directories(stb_image PRIVATE ${STB_IMAGE_DIR})
 
-# stb_image_write
+# stb_image_write https://github.com/nothings/stb
 set(STB_IMAGE_WRITE_DIR ${CMAKE_CURRENT_LIST_DIR}/stb_image_write)
 set(stb_image_write_SOURCE_DIR ${STB_IMAGE_WRITE_DIR} CACHE INTERNAL "")
 add_library(stb_image_write STATIC ${STB_IMAGE_WRITE_DIR}/stb_image_write.cpp)
@@ -33,19 +33,19 @@ CPMAddPackage(
 CPMAddPackage("gh:gabime/spdlog@1.15.1")
 
 if(WINDOW_APP)
-    # cgltf
+    # cgltf https://github.com/jkuhlmann/cgltf
     set(CGLTF_DIR ${CMAKE_CURRENT_LIST_DIR}/cgltf)
     set(cgltf_SOURCE_DIR ${CGLTF_DIR} CACHE INTERNAL "")
     add_library(cgltf STATIC ${CGLTF_DIR}/cgltf.cpp)
     target_include_directories(cgltf PRIVATE ${CGLTF_DIR})
 
-    # openfbx
+    # openfbx https://github.com/nem0/OpenFBX
     set(OPENFBX_DIR ${CMAKE_CURRENT_LIST_DIR}/openfbx)
     set(openfbx_SOURCE_DIR ${OPENFBX_DIR} CACHE INTERNAL "")
     add_library(openfbx STATIC ${OPENFBX_DIR}/libdeflate.c ${OPENFBX_DIR}/ofbx.cpp)
     target_include_directories(openfbx PRIVATE ${OPENFBX_DIR})
 
-    # tiny_obj_loader
+    # tiny_obj_loader https://github.com/tinyobjloader/tinyobjloader
     set(TINY_OBJ_LOADER_DIR ${CMAKE_CURRENT_LIST_DIR}/tiny_obj_loader)
     set(tiny_obj_loader_SOURCE_DIR ${TINY_OBJ_LOADER_DIR} CACHE INTERNAL "")
     add_library(tiny_obj_loader STATIC ${TINY_OBJ_LOADER_DIR}/tiny_obj_loader.cpp)
