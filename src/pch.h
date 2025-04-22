@@ -64,6 +64,15 @@
 #include <iostream>
 #endif
 
+// PLATFORM DEPENDANT
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
+
 // PROGRAM INFO
 #include <Config.h>
 #include <version.h>

@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.8
+// Version: 1.3.9
 // Author: Marceli Antosik (Muppetsg2)
-// Last Update: 29.03.2025
+// Last Update: 22.04.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -115,6 +115,7 @@ static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 }
 
 bool init();
+std::string get_executable_path();
 void drawBanner();
 void render();
 GLuint LoadDefaultWhiteTexture();
@@ -243,7 +244,7 @@ static const std::vector<std::string> skyboxPaths =
 
 int main(int argc, char** argv)
 {
-    exeDirPath = std::filesystem::absolute(argv[0]).parent_path().string();
+    exeDirPath = get_executable_path();
 
     ShadersExtractor::Init(exeDirPath + "\\shaders.dat");
 
@@ -496,6 +497,39 @@ bool init()
     defaultBlackTexture = LoadDefaultBlackTexture();
 
     return true;
+}
+
+std::string get_executable_path() {
+#if defined(_WIN32)
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    return std::filesystem::path(buffer).parent_path().string();
+
+#elif defined(__APPLE__)
+    char buffer[4096];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0) {
+        return std::filesystem::weakly_canonical(buffer).parent_path().string();
+    }
+    else {
+        printf("Error: _NSGetExecutablePath(): Buffer too small for executable path");
+        exit(EXIT_FAILURE);
+    }
+
+#elif defined(__linux__)
+    char buffer[4096];
+    ssize_t count = readlink("/proc/self/exe", buffer, sizeof(buffer));
+    if (count != -1) {
+        return std::filesystem::weakly_canonical(std::string(buffer, count)).parent_path().string();
+    }
+    else {
+        printf("Error: readlink(): Cannot read /proc/self/exe");
+        exit(EXIT_FAILURE);
+    }
+
+#else
+#error "Unsupported platform"
+#endif
 }
 
 void drawBanner()

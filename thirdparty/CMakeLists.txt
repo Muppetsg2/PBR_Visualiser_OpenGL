@@ -30,7 +30,7 @@ CPMAddPackage(
     GIT_REPOSITORY https://github.com/g-truc/gli.git
     GIT_TAG master
 )
-CPMAddPackage("gh:gabime/spdlog@1.15.1")
+CPMAddPackage("gh:gabime/spdlog@1.15.2")
 
 if(WINDOW_APP)
     # cgltf https://github.com/jkuhlmann/cgltf
@@ -62,7 +62,7 @@ if(WINDOW_APP)
     add_library(tiny_file_dialogs STATIC ${tiny_file_dialogs_SOURCE_DIR}/tinyfiledialogs.c)
 
     CPMAddPackage("gh:freetype/freetype#VER-2-13-3")
-    CPMAddPackage("gh:ocornut/imgui@1.91.8-docking")
+    CPMAddPackage("gh:ocornut/imgui@1.91.9b-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
     add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp

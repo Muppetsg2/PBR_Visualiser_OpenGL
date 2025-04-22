@@ -4,7 +4,7 @@
   <div id="toc">
     <ul style="list-style: none;">
       <summary>
-        <h1>PBR Visualiser 1.3.8</h1>
+        <h1>PBR Visualiser 1.3.9</h1>
       </summary>
     </ul>
   </div>

@@ -6,6 +6,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/pack_shaders.cmake)
 generate_key(6 SHADERS_KEY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.png ${CMAKE_CURRENT_BINARY_DIR}/icon.png COPYONLY)
+if (WINDOW_APP)
+	configure_file(${CMAKE_SOURCE_DIR}/res/build_resources/imgui.ini ${CMAKE_CURRENT_BINARY_DIR}/imgui.ini COPYONLY)
+endif()
 
 # Add source files
 file(GLOB_RECURSE SOURCE_FILES 
@@ -56,6 +59,14 @@ if(WINDOW_APP)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE WINDOW_APP)
 endif()
 
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32)
+elseif(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE __APPLE__)
+elseif(UNIX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE __linux__)
+endif()
+
 target_precompile_headers(${PROJECT_NAME} PUBLIC ${PRECOMPILE_HEADERS_FILE})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
@@ -88,6 +99,10 @@ if(WINDOW_APP)
 												  openfbx
 												  tiny_obj_loader
 												  tiny_file_dialogs)
+endif()
+
+if(APPLE)
+    target_link_libraries(${PROJECT_NAME} PUBLIC "-framework CoreFoundation")
 endif()
 
 # Shader Packing

@@ -32,5 +32,5 @@
 *.app
 
 /\.vs/
-/out/
+*out/
 *_data/
