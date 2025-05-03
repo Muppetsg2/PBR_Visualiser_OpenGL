@@ -25,7 +25,7 @@
 // - fixed saving screenshots in window build
 // - change GL min version to 4.3
 // - added influence of exposure and color intensity of the environment map on the resulting color of the material
-// - added ImPlot for statistics plots
+// - added ImPlot for statistics plots in window build
 // - added info in readme about c++ version
 // - changed screenshots in readme
 // 
