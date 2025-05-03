@@ -1,4 +1,4 @@
-#version 450 core
+#version 430 core
 
 #define M_PI 3.1415926535897932384626433832795
 
@@ -17,6 +17,8 @@ out vec4 FragColor;
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+uniform float skyboxExposure;
+uniform float skyboxColorIntensity;
 
 uniform sampler2D albedoMap;
 uniform sampler2D normalMap;
@@ -30,6 +32,16 @@ uniform float exposure;
 uniform float colorIntensity;
 
 uniform vec3 camPos;
+
+vec3 ApplyExposureAndIntensity(vec3 color, float e, float i)
+{
+    vec3 ret = color;
+    // Exposure
+    ret = vec3(1.0) - exp(-ret * e);
+    // Color Intensity
+    ret *= i;
+    return ret;
+}
 
 vec3 GetNormalFromNormalMap(sampler2D map, vec2 coords)
 {
@@ -50,19 +62,19 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
     // depth of current layer
     float currentLayerDepth = 0.0;
     // the amount to shift the texture coordinates per layer (from vector P)
-    vec2 P = viewDir.xy * height_scale; 
+    vec2 P = viewDir.xy / viewDir.z * height_scale; 
     vec2 deltaTexCoords = P / numLayers;
 
     // get initial values
     vec2  currentTexCoords = texCoords;
-    float currentDepthMapValue = texture(displacementMap, texCoords).r;
+    float currentDepthMapValue = texture(displacementMap, currentTexCoords).r;
 
     while(currentLayerDepth < currentDepthMapValue)
     {
         // shift texture coordinates along direction of P
         currentTexCoords -= deltaTexCoords;
         // get depthmap value at current texture coordinates
-        currentDepthMapValue = texture(displacementMap, texCoords).r;  
+        currentDepthMapValue = texture(displacementMap, currentTexCoords).r;  
         // get depth of next layer
         currentLayerDepth += layerDepth;  
     }
@@ -72,7 +84,7 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 
     // get depth after and before collision for linear interpolation
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = texture(displacementMap, texCoords).r - currentLayerDepth + layerDepth;
+    float beforeDepth = texture(displacementMap, prevTexCoords).r - currentLayerDepth + layerDepth;
 
     // interpolation of texture coordinates
     float weight = afterDepth / (afterDepth - beforeDepth);
@@ -126,6 +138,16 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
+vec3 PrefilteredColor(vec3 R, float roughness)
+{
+    return ApplyExposureAndIntensity(textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb, skyboxExposure, skyboxColorIntensity);
+}
+
+vec3 IrradianceColor(vec3 N)
+{
+    return ApplyExposureAndIntensity(texture(irradianceMap, N).rgb, skyboxExposure, skyboxColorIntensity);
+}
+
 void main() 
 {
     vec3 viewDir = normalize(fs_in.TangentViewPos - fs_in.TangentWorldPos);
@@ -151,24 +173,16 @@ void main()
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 irradiance = IrradianceColor(N);
     vec3 diffuse = irradiance * albedo;
 
-    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;
+    vec3 prefilteredColor = PrefilteredColor(R, roughness);
     vec2 envBRDF  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 color = (kD * diffuse + specular) * ao;
 
-    vec3 color = ambient;
-
-    // Exposure
-    //color *= exposure;
-    // Tonemapping Reinharda
-    //color = color / (color + vec3(1.0));
-    color = vec3(1.0) - exp(-color * exposure);
-    // Color Intensity
-    color *= colorIntensity;
+    color = ApplyExposureAndIntensity(color, exposure, colorIntensity);
     // Gamma Correction
     color = pow(color, vec3(1.0/2.2));
 

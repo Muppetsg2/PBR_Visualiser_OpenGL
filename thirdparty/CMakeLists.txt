@@ -22,14 +22,17 @@ set(stb_image_write_SOURCE_DIR ${STB_IMAGE_WRITE_DIR} CACHE INTERNAL "")
 add_library(stb_image_write STATIC ${STB_IMAGE_WRITE_DIR}/stb_image_write.cpp)
 target_include_directories(stb_image_write PRIVATE ${STB_IMAGE_WRITE_DIR})
 
-# other
+# glfw https://github.com/glfw/glfw
 CPMAddPackage("gh:glfw/glfw#3.4")
+# glm https://github.com/g-truc/glm
 CPMAddPackage("gh:g-truc/glm#1.0.1")
+# gli https://github.com/g-truc/gli
 CPMAddPackage(
     NAME gli
     GIT_REPOSITORY https://github.com/g-truc/gli.git
     GIT_TAG master
 )
+# spdlog https://github.com/gabime/spdlog
 CPMAddPackage("gh:gabime/spdlog@1.15.2")
 
 if(WINDOW_APP)
@@ -51,7 +54,7 @@ if(WINDOW_APP)
     add_library(tiny_obj_loader STATIC ${TINY_OBJ_LOADER_DIR}/tiny_obj_loader.cpp)
     target_include_directories(tiny_obj_loader PRIVATE ${TINY_OBJ_LOADER_DIR})
 
-    # tiny_file_dialogs
+    # tiny_file_dialogs https://sourceforge.net/projects/tinyfiledialogs/
     CPMAddPackage(
         NAME tiny_file_dialogs
         GIT_REPOSITORY https://git.code.sf.net/p/tinyfiledialogs/code
@@ -61,12 +64,14 @@ if(WINDOW_APP)
     set(tiny_file_dialogs_SOURCE_DIR ${tiny_file_dialogs_SOURCE_DIR} CACHE INTERNAL "")
     add_library(tiny_file_dialogs STATIC ${tiny_file_dialogs_SOURCE_DIR}/tinyfiledialogs.c)
 
+    # FreeType https://github.com/freetype/freetype
     CPMAddPackage("gh:freetype/freetype#VER-2-13-3")
+    # ImGui https://github.com/ocornut/imgui
     CPMAddPackage("gh:ocornut/imgui@1.91.9b-docking")
 
     set(imgui_SOURCE_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "")
     add_library(imgui STATIC ${imgui_SOURCE_DIR}/imgui.cpp
-					         ${imgui_SOURCE_DIR}/imgui_demo.cpp
+					         #${imgui_SOURCE_DIR}/imgui_demo.cpp
 					         ${imgui_SOURCE_DIR}/imgui_draw.cpp
 						     ${imgui_SOURCE_DIR}/imgui_tables.cpp
 					         ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
@@ -77,8 +82,22 @@ if(WINDOW_APP)
 
     set(imgui_FREETYPE_SOURCE ${imgui_SOURCE_DIR}/misc/freetype/imgui_freetype.cpp CACHE INTERNAL "")
     set(imgui_BACKEND_SOURCE ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp CACHE INTERNAL "")
+
+    # ImPlot https://github.com/epezent/implot
+    CPMAddPackage(
+        NAME implot
+        GIT_REPOSITORY https://github.com/epezent/implot.git
+        GIT_TAG master
+    )
+
+    set(implot_SOURCE_DIR ${implot_SOURCE_DIR} CACHE INTERNAL "")
+    add_library(implot STATIC ${implot_SOURCE_DIR}/implot.cpp
+					          #${implot_SOURCE_DIR}/implot_demo.cpp
+						      ${implot_SOURCE_DIR}/implot_items.cpp)
+    target_include_directories(implot PUBLIC ${implot_SOURCE_DIR} ${imgui_SOURCE_DIR})
     
     set_target_properties(imgui
+                          implot
                           freetype
                           cgltf
                           openfbx

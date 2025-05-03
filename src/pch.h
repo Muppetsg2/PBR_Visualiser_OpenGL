@@ -8,6 +8,9 @@
 #include <imgui_impl/imgui_style.h>
 #include <imgui_impl/imgui_user.h>
 
+// IMPLOT
+#include <implot.h>
+
 // CGLTF
 #include <cgltf.h>
 
@@ -47,6 +50,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <deque>
 #include <direct.h>
 #include <filesystem>
 #include <format>
@@ -67,10 +71,21 @@
 // PLATFORM DEPENDANT
 #if defined(_WIN32)
 #include <windows.h>
+#include <psapi.h>
 #elif defined(__APPLE__)
+#include <mach/mach.h>
 #include <mach-o/dyld.h>
 #elif defined(__linux__)
 #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#define MKDIR(path) mkdir(path, 0777)
 #endif
 
 // PROGRAM INFO

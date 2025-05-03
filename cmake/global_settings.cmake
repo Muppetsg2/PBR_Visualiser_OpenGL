@@ -14,3 +14,5 @@ set(GLFW_BUILD_DOCS     OFF CACHE INTERNAL "Build the GLFW documentation")
 set(GLFW_INSTALL        OFF CACHE INTERNAL "Generate installation target")
 set(GLI_TEST_ENABLE     OFF CACHE INTERNAL "Build the GLI test programs")
 set(GLM_ENABLE_CXX_20   ON  CACHE INTERNAL "Enable c++20 for GLM")
+
+set(SPDLOG_ENABLE_PCH   ON  CACHE INTERNAL "Enable pch for spdlog")

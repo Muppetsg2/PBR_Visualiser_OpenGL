@@ -2,7 +2,7 @@
 
 int Texture2D::GetChannelsFromFileFormat(TextureFileFormat fileFormat) {
 	switch (fileFormat) {
-		// 1 kana³
+		// 1 channel
 		case TextureFileFormat::R32_FLOAT:
 		case TextureFileFormat::R8_SNORM:
 		case TextureFileFormat::COMPRESSED_R:
@@ -20,7 +20,7 @@ int Texture2D::GetChannelsFromFileFormat(TextureFileFormat fileFormat) {
 		case TextureFileFormat::COMPRESSED_SIGNED_R_RGTC1:
 			return 1;
 
-			// 2 kana³y
+		// 2 channels
 		case TextureFileFormat::RG:
 		case TextureFileFormat::RG8:
 		case TextureFileFormat::RG8_SNORM:
@@ -38,7 +38,7 @@ int Texture2D::GetChannelsFromFileFormat(TextureFileFormat fileFormat) {
 		case TextureFileFormat::COMPRESSED_SIGNED_RG_RGTC2:
 			return 2;
 
-			// 3 kana³y
+		// 3 channels
 		case TextureFileFormat::RGB:
 		case TextureFileFormat::SRGB:
 		case TextureFileFormat::RGB4:
@@ -63,7 +63,7 @@ int Texture2D::GetChannelsFromFileFormat(TextureFileFormat fileFormat) {
 		case TextureFileFormat::COMPRESSED_RGB:
 			return 3;
 
-		// 4 kana³y
+		// 4 channels
 		case TextureFileFormat::RGBA:
 		case TextureFileFormat::RGBA2:
 		case TextureFileFormat::RGBA4:

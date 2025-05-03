@@ -18,7 +18,7 @@ std::pair<bool, std::string> ShadersExtractor::ReadAndDecodeFile(std::string fil
     }
 
     try {
-        // SprawdŸ rozmiar pliku
+        // Check file size
         file.seekg(0, std::ios::end);
         std::streamsize size = file.tellg();
         file.seekg(0, std::ios::beg);
@@ -28,16 +28,16 @@ std::pair<bool, std::string> ShadersExtractor::ReadAndDecodeFile(std::string fil
             return { false, {} };
         }
 
-        // Wczytaj zawartoœæ pliku
+        // Read file content
         std::vector<char> fileContent(static_cast<std::size_t>(size));
         if (!file.read(fileContent.data(), size)) {
             spdlog::error("Error occurred while reading file at path '{}'.", filePath);
             return { false, {} };
         }
 
-        // Odszyfruj zawartoœæ za pomoc¹ XOR
+        // Decrypt file content using xor
         std::string decodedData;
-        decodedData.resize(fileContent.size()); // Przydzielenie pamiêci na wynik
+        decodedData.resize(fileContent.size());
 
         size_t keyLength = key.length();
         size_t diff = 0;

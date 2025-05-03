@@ -4,9 +4,9 @@
 //   / ___/ _  / , _/  | |/ / (_-</ // / _ `/ / (_-</ -_) __/
 //  /_/  /____/_/|_|   |___/_/___/\_,_/\_,_/_/_/___/\__/_/   
 //
-// Version: 1.3.9
+// Version: 1.4.0
 // Author: Marceli Antosik (Muppetsg2)
-// Last Update: 22.04.2025
+// Last Update: 3.05.2025
 
 extern "C" {
     _declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -19,10 +19,12 @@ extern "C" {
 #include <Camera.h>
 #include <ShadersExtractor.h>
 #include <Shape.h>
+#include <SystemFunctions.h>
 
 #if WINDOW_APP
 #include <TimeManager.h>
 #include <ModelLoader.h>
+#include <CameraController.h>
 #else
 #include <ArgumentParser.h>
 #endif
@@ -115,7 +117,6 @@ static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 }
 
 bool init();
-std::string get_executable_path();
 void drawBanner();
 void render();
 GLuint LoadDefaultWhiteTexture();
@@ -130,15 +131,21 @@ ShapeType shapeType = ShapeType::Sphere;
 PlaneNormalOrientation planeNormalOrientation = PlaneNormalOrientation::TOP;
 
 void set_shape(GLuint VAO, ShapeType type);
+size_t get_shape_indices_count(ShapeType type);
+size_t get_shape_vertices_count(ShapeType type);
 void set_plane_normal_orientation(PlaneNormalOrientation orientation);
 glm::mat4 get_plane_normal_orientation_mat(glm::mat4 planeTrans, PlaneNormalOrientation orientation);
 void end_frame();
 void input();
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void init_imgui();
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void imgui_init();
 void imgui_begin();
 void imgui_render();
-void drawHelp(bool* open);
+void draw_help(bool* open);
+void update_fps_history(float deltaTime, float sampleRate, bool reset);
+void update_memory_history(float deltaTime, float sampleRate, bool reset);
+void draw_statistics(bool* open);
 void imgui_end();
 #else
 ENUM_CLASS_BASE_VALUE(RenderPosition, uint8_t, TOP, 0, BOTTOM, 1, FRONT, 2, BACK, 3, RIGHT, 4, LEFT, 5, DEFAULT, 6)
@@ -197,10 +204,10 @@ int32_t WINDOW_HEIGHT = 2048;
 GLFWwindow* window = nullptr;
 std::string exeDirPath;
 
-// Change these to lower GL version like 4.5 if GL 4.6 can't be initialized on your machine
-const     char*   glsl_version     = "#version 450";
+// GL version 4.3
+const     char*   glsl_version     = "#version 430";
 constexpr int32_t GL_VERSION_MAJOR = 4;
-constexpr int32_t GL_VERSION_MINOR = 5;
+constexpr int32_t GL_VERSION_MINOR = 3;
 
 const char* iconPath = "icon.png";
 
@@ -212,7 +219,7 @@ GLuint defaultBlackTexture = 0;
 GLuint quadVAO = 0;
 Shader* PBR = nullptr;
 glm::mat4 trans = glm::mat4(1.f);
-float height_scale = 0.04f;
+float height_scale = 0.4f;
 float exposure = 1.f;
 float colorIntensity = 1.f;
 
@@ -220,13 +227,13 @@ float colorIntensity = 1.f;
 bool drawSkybox = true;
 ImVec4 bgColor = ImVec4(0.f, 0.f, 0.f, 1.f);
 
-float cameraSpeed = 40.f;
 bool released = true;
-bool mouseNotUsed = true;
-float sensitivity = 0.1f;
 
-GLfloat lastX = 0.f, lastY = 0.f;
-float rotateAngle = 50.f;
+// Statistics
+size_t mouseClicks = 0;
+constexpr float HISTORY_DURATION = 10.0f;
+std::deque<float> fpsHistory;
+std::deque<float> memoryHistory;
 #else
 static const std::vector<std::string> skyboxPaths =
 {
@@ -293,7 +300,7 @@ int main(int argc, char** argv)
     if (Config::IsVerbose()) spdlog::info("Initialized project.");
 
 #if WINDOW_APP
-    init_imgui();
+    imgui_init();
     spdlog::info("Initialized ImGui.");
 
     Camera::Init(window);
@@ -399,6 +406,7 @@ int main(int argc, char** argv)
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 #else
     ArgumentParser::Deinit();
@@ -423,11 +431,11 @@ bool init()
     
     if (Config::IsVerbose()) spdlog::info("Successfully initialized GLFW!");
 
-    // GL 4.5 + GLSL 450
+    // GL 4.3 + GLSL 430
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION_MINOR);
-    glfwWindowHint(GLFW_OPENGL_PROFILE,        GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    glfwWindowHint(GLFW_OPENGL_PROFILE,        GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
 #if !WINDOW_APP
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -443,8 +451,11 @@ bool init()
     if (Config::IsVerbose()) spdlog::info("Successfully created GLFW Window!");
 
     glfwMakeContextCurrent(window);
-    //glfwSwapInterval(1); // Enable VSync - fixes FPS at the refresh rate of your screen
+    glfwSwapInterval(0); // Disable VSync
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
+#if WINDOW_APP
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+#endif
 
     GLFWimage images[1];
     std::string path = std::string(exeDirPath).append("\\").append(iconPath);
@@ -497,39 +508,6 @@ bool init()
     defaultBlackTexture = LoadDefaultBlackTexture();
 
     return true;
-}
-
-std::string get_executable_path() {
-#if defined(_WIN32)
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);
-    return std::filesystem::path(buffer).parent_path().string();
-
-#elif defined(__APPLE__)
-    char buffer[4096];
-    uint32_t size = sizeof(buffer);
-    if (_NSGetExecutablePath(buffer, &size) == 0) {
-        return std::filesystem::weakly_canonical(buffer).parent_path().string();
-    }
-    else {
-        printf("Error: _NSGetExecutablePath(): Buffer too small for executable path");
-        exit(EXIT_FAILURE);
-    }
-
-#elif defined(__linux__)
-    char buffer[4096];
-    ssize_t count = readlink("/proc/self/exe", buffer, sizeof(buffer));
-    if (count != -1) {
-        return std::filesystem::weakly_canonical(std::string(buffer, count)).parent_path().string();
-    }
-    else {
-        printf("Error: readlink(): Cannot read /proc/self/exe");
-        exit(EXIT_FAILURE);
-    }
-
-#else
-#error "Unsupported platform"
-#endif
 }
 
 void drawBanner()
@@ -591,9 +569,11 @@ void render()
         PBR->SetInt(name.append("Map"), i);
     }
 
-    PBR->SetFloat("height_scale", height_scale);
+    PBR->SetFloat("height_scale", height_scale * 0.1f);
     PBR->SetFloat("exposure", exposure);
     PBR->SetFloat("colorIntensity", colorIntensity);
+    PBR->SetFloat("skyboxExposure", Skybox::GetExposure());
+    PBR->SetFloat("skyboxColorIntensity", Skybox::GetColorIntensity());
 
     Skybox::UseIrradianceTexture(6);
     PBR->SetInt("irradianceMap", 6);
@@ -741,6 +721,52 @@ void set_shape(GLuint VAO, ShapeType type)
     shapeType = type;
 }
 
+size_t get_shape_indices_count(ShapeType type)
+{
+    switch (type) {
+        case ShapeType::Sphere: {
+            return Shape::GetSphereIndicesCount();
+        }
+        case ShapeType::Cube: {
+            return Shape::GetCubeIndicesCount();
+        }
+        case ShapeType::Plane: {
+            return Shape::GetQuadIndicesCount();
+        }
+        case ShapeType::Loaded_Model: {
+            if (ModelLoader::IsInit() && ModelLoader::HasIndices()) {
+                return ModelLoader::GetIndicesCount();
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
+
+size_t get_shape_vertices_count(ShapeType type)
+{
+    switch (type) {
+        case ShapeType::Sphere: {
+            return Shape::GetSphereVerticesCount();
+        }
+        case ShapeType::Cube: {
+            return Shape::GetCubeVerticesCount();
+        }
+        case ShapeType::Plane: {
+            return Shape::GetQuadVerticesCount();
+        }
+        case ShapeType::Loaded_Model: {
+            if (ModelLoader::IsInit()) {
+                return ModelLoader::GetVerticesCount();
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
+
 void set_plane_normal_orientation(PlaneNormalOrientation orientation)
 {
     spdlog::info("Plane Normal Orientation: {}", to_string(orientation));
@@ -799,39 +825,17 @@ void end_frame()
 
 void input()
 {
-    bool pressed = false;
-
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
-    {
-        Camera::SetPosition(Camera::GetPosition() + Camera::GetFrontDir() * cameraSpeed * TimeManager::GetDeltaTime());
-        pressed = true;
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
-    {
-        Camera::SetPosition(Camera::GetPosition() - Camera::GetFrontDir() * cameraSpeed * TimeManager::GetDeltaTime());
-        pressed = true;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
-    {
-        Camera::SetPosition(Camera::GetPosition() - Camera::GetRight() * cameraSpeed * TimeManager::GetDeltaTime());
-        pressed = true;
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
-    {
-        Camera::SetPosition(Camera::GetPosition() + Camera::GetRight() * cameraSpeed * TimeManager::GetDeltaTime());
-        pressed = true;
-    }
+    CameraController::MoveCamera(window);
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS && released) {
 
         released = false;
-        mouseNotUsed = true;
+        CameraController::ResetRotation();
         if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
         {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -851,46 +855,22 @@ void input()
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (mouseNotUsed)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        mouseNotUsed = false;
-    }
-
-    GLfloat xoffset = xpos - lastX;
-    GLfloat yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    glm::vec3 rot = Camera::GetRotation();
-
-    // YAW = ROT Y
-    // PITCH = ROT X
-    // ROLL = ROT Z
-
-    rot.x += yoffset;
-
-    if (rot.x > 89.f) {
-        rot.x = 89.f;
-    }
-
-    if (rot.x < -89.f)
-    {
-        rot.x = -89.f;
-    }
-
-    Camera::SetRotation(glm::vec3(rot.x, rot.y + xoffset, rot.z));
+    CameraController::RotateCamera(xpos, ypos);
 }
 
-void init_imgui()
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        ++mouseClicks;
+    }
+}
+
+void imgui_init()
 {
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
@@ -936,8 +916,10 @@ void imgui_begin()
 void imgui_render()
 {
     static bool _helpOpen = true;
+    static bool _statisticsOpen = false;
     static bool _skyboxOpen = true;
     static bool _cameraOpen = true;
+    static bool _cameraController = true;
     static std::string modelFolderPath = std::string(exeDirPath).append("\\res\\model");
     static std::string screenFolderPath = std::string(exeDirPath).append("\\Screenshots");
     static std::string textureFolderPath = std::string(exeDirPath).append("\\res\\textures");
@@ -961,11 +943,17 @@ void imgui_render()
             if (ImGui::MenuItem("Help", 0, &_helpOpen)) {
                 _helpOpen = true;
             }
+            if (ImGui::MenuItem("Statistics", 0, &_statisticsOpen)) {
+                _statisticsOpen = true;
+            }
             if (ImGui::MenuItem("Skybox", 0, &_skyboxOpen)) {
                 _skyboxOpen = true;
             }
             if (ImGui::MenuItem("Camera", 0, &_cameraOpen)) {
                 _cameraOpen = true;
+            }
+            if (ImGui::MenuItem("CameraController", 0, &_cameraController)) {
+                _cameraController = true;
             }
             ImGui::EndMenu();
         }
@@ -974,15 +962,10 @@ void imgui_render()
     }
 
     if (ImGui::Button("Save Screenshot")) {
-
-        bool exist = false;
-        struct stat info;
-        if (stat(screenFolderPath.c_str(), &info) == 0 && (info.st_mode & S_IFDIR)) {
-            exist = true; // Istnieje i jest folderem
-        }
+        bool exist = check_directory(screenFolderPath.c_str());
 
         if (!exist) {
-            if (_mkdir(screenFolderPath.c_str()) == 0) {
+            if (create_directory(screenFolderPath.c_str())) {
                 spdlog::info("Directory '{}' has been created!", screenFolderPath);
                 exist = true;
             }
@@ -1131,20 +1114,20 @@ void imgui_render()
         ImGui::ShowErrorPopup(("Error Loading Image " + std::string(imageName[i])).c_str(), ("Failed to load " + std::string(imageName[i]) + " image. Please check the file and try again.").c_str());
     }
 
-    ImGui::DragFloat("Height", &height_scale, 0.1f, 0.0f, FLT_MAX);
-    ImGui::SliderFloat("Exposure", &exposure, 0.0f, 11.0f, "Exposure: %.2f");
-    ImGui::SliderFloat("Color Intensity", &colorIntensity, 0.0f, 4.0f, "Intensity: %.2f");
-
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::SliderFloat("Height", &height_scale, -1.0f, 1.0f, "Height: %.3f");
+    ImGui::SliderFloat("Exposure", &exposure, 0.0f, 11.0f, "Exposure: %.3f");
+    ImGui::SliderFloat("Color Intensity", &colorIntensity, 0.0f, 4.0f, "Intensity: %.3f");
 
     ImGui::End();
 
-    drawHelp(&_helpOpen);
+    draw_help(&_helpOpen);
+    draw_statistics(&_statisticsOpen);
     Skybox::DrawEditor(&_skyboxOpen, skyboxFolderPath);
     Camera::DrawEditor(&_cameraOpen);
+    CameraController::DrawEditor(&_cameraController);
 }
 
-void drawHelp(bool* open)
+void draw_help(bool* open)
 {
     static Texture2D* icon = nullptr;
 
@@ -1204,6 +1187,132 @@ void drawHelp(bool* open)
     ImGui::End();
 }
 
+void update_memory_history(float deltaTime, float sampleRate, bool reset)
+{
+    static float sampleAccumulator = 0.0f;
+
+    if (reset) {
+        memoryHistory.clear();
+        sampleAccumulator = 0.0f;
+    }
+
+    sampleAccumulator += deltaTime;
+
+    while (sampleAccumulator >= sampleRate) {
+        sampleAccumulator -= sampleRate;
+
+        memoryHistory.push_back(static_cast<float>(get_memory_usage_mb()));
+
+        size_t maxSamples = static_cast<size_t>(HISTORY_DURATION / sampleRate);
+
+        if (memoryHistory.size() > maxSamples)
+            memoryHistory.pop_front();
+    }
+}
+
+void update_fps_history(float deltaTime, float sampleRate, bool reset)
+{
+    static float sampleAccumulator = 0.0f;
+
+    if (reset) {
+        fpsHistory.clear();
+        sampleAccumulator = 0.0f;
+    }
+
+    sampleAccumulator += deltaTime;
+
+    while (sampleAccumulator >= sampleRate) {
+        sampleAccumulator -= sampleRate;
+
+        fpsHistory.push_back(ImGui::GetIO().Framerate);
+
+        size_t maxSamples = static_cast<size_t>(HISTORY_DURATION / sampleRate);
+
+        if (fpsHistory.size() > maxSamples)
+            fpsHistory.pop_front();
+    }
+}
+
+void draw_statistics(bool* open)
+{
+    constexpr float sampleRate = 0.5f; // 500 ms
+
+    if (!*open) return;
+
+    if (!ImGui::Begin("Statistics", open)) {
+        ImGui::End();
+        return;
+    }
+
+    static bool showFpsPlot = false;
+    static bool showMemoryPlot = false;
+
+    float fps = ImGui::GetIO().Framerate;
+    float ms_per_frame = 1000.0f / fps;
+
+    ImGui::Text("Performance: %.1f FPS (%.3f ms/frame)", fps, ms_per_frame);
+
+    bool before = showFpsPlot;
+    ImGui::Checkbox("Show FPS Plot", &showFpsPlot);
+
+    if (showFpsPlot) {
+        update_fps_history(TimeManager::GetDeltaTime(), sampleRate, before == false);
+        std::vector<float> fpsCopy(fpsHistory.begin(), fpsHistory.end());
+        
+        std::vector<float> timeValues(fpsCopy.size());
+        for (size_t i = 0; i < timeValues.size(); ++i) {
+            timeValues[i] = static_cast<float>(i) * sampleRate;
+        }
+
+        float maxVal = !fpsCopy.empty() ? *std::max_element(fpsCopy.begin(), fpsCopy.end()) + 10.0f : 100.0f;
+        float timeEnd = !timeValues.empty() ? timeValues.back() : HISTORY_DURATION;
+
+        if (ImPlot::BeginPlot("FPS Over Time", "Time (s)", "FPS", ImVec2(-1, 150))) {
+            ImPlot::SetupAxesLimits(0, timeEnd, 0, maxVal, ImGuiCond_Always);
+            if (!fpsCopy.empty())
+                ImPlot::PlotLine("FPS", timeValues.data(), fpsCopy.data(), static_cast<int>(fpsCopy.size()));
+            ImPlot::EndPlot();
+        }
+    }
+
+    ImGui::Separator();
+
+    size_t memory_usage_mb = get_memory_usage_mb();
+    ImGui::Text("Memory usage: %zu MB", memory_usage_mb);
+
+    before = showMemoryPlot;
+    ImGui::Checkbox("Show Memory Plot", &showMemoryPlot);
+
+    if (showMemoryPlot) {
+        update_memory_history(TimeManager::GetDeltaTime(), sampleRate, before == false);
+        std::vector<float> memCopy(memoryHistory.begin(), memoryHistory.end());
+
+        std::vector<float> timeValues(memCopy.size());
+        for (size_t i = 0; i < timeValues.size(); ++i) {
+            timeValues[i] = static_cast<float>(i) * sampleRate;
+        }
+
+        float maxVal = !memCopy.empty() ? *std::max_element(memCopy.begin(), memCopy.end()) + 10.0f : 400.0f;
+        float timeEnd = !timeValues.empty() ? timeValues.back() : HISTORY_DURATION;
+
+        if (ImPlot::BeginPlot("Memory Usage Over Time", "Time (s)", "Memory (MB)", ImVec2(-1, 150))) {
+            ImPlot::SetupAxesLimits(0, timeEnd, 0, maxVal, ImGuiCond_Always);
+            if (!memCopy.empty())
+                ImPlot::PlotLine("Memory", timeValues.data(), memCopy.data(), static_cast<int>(memCopy.size()));
+            ImPlot::EndPlot();
+        }
+    }
+
+    size_t count = get_shape_vertices_count(shapeType);
+    ImGui::Text("Vertices: %d", count);
+
+    count = get_shape_indices_count(shapeType);
+    ImGui::Text("Indices: %d", count);
+
+    ImGui::Text("Mouse clicks: %d", mouseClicks);
+
+    ImGui::End();
+}
 
 void imgui_end()
 {
@@ -1355,7 +1464,7 @@ void processNameArgument(const std::string& arg, std::string& fileName) {
 void processDirectoryArgument(const std::string& arg, std::string& saveDir) {
     try {
         std::filesystem::path dirPath = std::filesystem::absolute(arg);
-        if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+        if (check_directory(dirPath.string().c_str())) {
             saveDir = dirPath.string();
         }
         else {
@@ -1617,7 +1726,7 @@ void processDirectoryInput(std::string& direc, std::string& last)
 
         try {
             std::filesystem::path dirPath = std::filesystem::absolute(userInput);
-            if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+            if (check_directory(dirPath.string().c_str())) {
                 direc = dirPath.string();
                 last = dirPath.string();
                 spdlog::info("Save directory: {}", direc);
@@ -1828,88 +1937,88 @@ void interpretPositionValue(RenderPosition& position)
 {
     trans = glm::mat4(1.f);
     switch (position) {
-    case RenderPosition::TOP: {
-        Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
-        Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
-        trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
-        break;
-    }
-    case RenderPosition::BOTTOM: {
-        Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
-        Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
-        trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
-        break;
-    }
-    case RenderPosition::FRONT: {
-        Camera::SetPosition(glm::vec3(0.05f, 0.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(1.2f, 0.f, 0.f));
-        trans = glm::rotate(trans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
-        break;
-    }
-    case RenderPosition::DEFAULT:
-    case RenderPosition::BACK: {
-        Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
-        Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
-        break;
-    }
-    case RenderPosition::RIGHT: {
-        Camera::SetPosition(glm::vec3(0.f, 0.f, 0.05f));
-        Camera::SetRotation(glm::vec3(0.f, 90.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(0.f, 0.f, 1.2f));
-        trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
-        break;
-    }
-    case RenderPosition::LEFT: {
-        Camera::SetPosition(glm::vec3(0.f, 0.f, -0.05f));
-        Camera::SetRotation(glm::vec3(0.f, -90.f, 0.f));
-        trans = glm::translate(trans, glm::vec3(0.f, 0.f, -1.2f));
-        trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
-        break;
-    }
+        case RenderPosition::TOP: {
+            Camera::SetPosition(glm::vec3(0.f, -0.05f, 0.f));
+            Camera::SetRotation(glm::vec3(-90.f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, -1.2f, 0.f));
+            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case RenderPosition::BOTTOM: {
+            Camera::SetPosition(glm::vec3(0.f, 0.05f, 0.f));
+            Camera::SetRotation(glm::vec3(90.f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 1.2f, 0.f));
+            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 0.f, 1.f));
+            break;
+        }
+        case RenderPosition::FRONT: {
+            Camera::SetPosition(glm::vec3(0.05f, 0.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(1.2f, 0.f, 0.f));
+            trans = glm::rotate(trans, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
+        case RenderPosition::DEFAULT:
+        case RenderPosition::BACK: {
+            Camera::SetPosition(glm::vec3(-0.05f, 0.f, 0.f));
+            Camera::SetRotation(glm::vec3(0.f, 180.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(-1.2f, 0.f, 0.f));
+            break;
+        }
+        case RenderPosition::RIGHT: {
+            Camera::SetPosition(glm::vec3(0.f, 0.f, 0.05f));
+            Camera::SetRotation(glm::vec3(0.f, 90.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 0.f, 1.2f));
+            trans = glm::rotate(trans, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
+        case RenderPosition::LEFT: {
+            Camera::SetPosition(glm::vec3(0.f, 0.f, -0.05f));
+            Camera::SetRotation(glm::vec3(0.f, -90.f, 0.f));
+            trans = glm::translate(trans, glm::vec3(0.f, 0.f, -1.2f));
+            trans = glm::rotate(trans, glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
+            break;
+        }
     }
 }
 
 void interpretResolutionValue(RenderResolution& resolution)
 {
     switch (resolution) {
-    case RenderResolution::R128: {
-        WINDOW_WIDTH = 128;
-        WINDOW_HEIGHT = 128;
-        break;
-    }
-    case RenderResolution::R256: {
-        WINDOW_WIDTH = 256;
-        WINDOW_HEIGHT = 256;
-        break;
-    }
-    case RenderResolution::R512: {
-        WINDOW_WIDTH = 512;
-        WINDOW_HEIGHT = 512;
-        break;
-    }
-    case RenderResolution::R1K: {
-        WINDOW_WIDTH = 1024;
-        WINDOW_HEIGHT = 1024;
-        break;
-    }
-    case RenderResolution::R2K: {
-        WINDOW_WIDTH = 2048;
-        WINDOW_HEIGHT = 2048;
-        break;
-    }
-    case RenderResolution::R4K: {
-        WINDOW_WIDTH = 4096;
-        WINDOW_HEIGHT = 4096;
-        break;
-    }
-    case RenderResolution::DEFAULT: {
-        WINDOW_WIDTH = 2048;
-        WINDOW_HEIGHT = 2048;
-        break;
-    }
+        case RenderResolution::R128: {
+            WINDOW_WIDTH = 128;
+            WINDOW_HEIGHT = 128;
+            break;
+        }
+        case RenderResolution::R256: {
+            WINDOW_WIDTH = 256;
+            WINDOW_HEIGHT = 256;
+            break;
+        }
+        case RenderResolution::R512: {
+            WINDOW_WIDTH = 512;
+            WINDOW_HEIGHT = 512;
+            break;
+        }
+        case RenderResolution::R1K: {
+            WINDOW_WIDTH = 1024;
+            WINDOW_HEIGHT = 1024;
+            break;
+        }
+        case RenderResolution::R2K: {
+            WINDOW_WIDTH = 2048;
+            WINDOW_HEIGHT = 2048;
+            break;
+        }
+        case RenderResolution::R4K: {
+            WINDOW_WIDTH = 4096;
+            WINDOW_HEIGHT = 4096;
+            break;
+        }
+        case RenderResolution::DEFAULT: {
+            WINDOW_WIDTH = 2048;
+            WINDOW_HEIGHT = 2048;
+            break;
+        }
     }
 }
 

@@ -24,8 +24,8 @@ if (WINDOW_APP)
 	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(ArgumentParser\.cpp).*")
 	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(ArgumentParser\.h).*")
 else()
-	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.cpp|ModelLoader\.cpp).*")
-	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.h|ModelLoader\.h).*")
+	list(FILTER SOURCE_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.cpp|ModelLoader\.cpp|CameraController\.cpp).*")
+	list(FILTER HEADER_FILES EXCLUDE REGEX ".*(imgui_impl\/|TimeManager\.h|ModelLoader\.h|CameraController\.h).*")
 endif()
 
 # Search for the assets files
@@ -89,11 +89,13 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glad
 
 if(WINDOW_APP)
 	 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR}
+													   ${implot_SOURCE_DIR}
 													   ${cgltf_SOURCE_DIR}
 													   ${openfbx_SOURCE_DIR}
 													   ${tiny_obj_loader_SOURCE_DIR}
 													   ${tiny_file_dialogs_SOURCE_DIR})
 	 target_link_libraries(${PROJECT_NAME} PUBLIC imgui
+												  implot
 												  freetype
 												  cgltf
 												  openfbx

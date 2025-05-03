@@ -4,7 +4,7 @@
   <div id="toc">
     <ul style="list-style: none;">
       <summary>
-        <h1>PBR Visualiser 1.3.9</h1>
+        <h1>PBR Visualiser 1.4.0</h1>
       </summary>
     </ul>
   </div>
@@ -36,17 +36,19 @@
 
 ## 📚 Used Libraries
 - 🎮 **OpenGL** - rendering engine
-- 🖱️ **ImGui** - UI handling (GUI mode)
-- 📐 **GLM** - mathematical operations
-- 🖼️ **GLI** - DDS file support
-- 🏞️ **GLFW** - window & input handling
-- 📜 **spdlog** - logging
-- 📂 **cgltf** - loading GLTF/GLB objects
-- 📂 **OpenFBX** - FBX file support
-- 📦 **tiny_obj_loader** - OBJ file support
-- 🖼️ **stbi_image** - image loading (HDR, JPG, PNG)
-- 💾 **stbi_image_write** - image saving
-- 🗂️ **tinyfiledialogs** - dialog windows
+- 🖱️ [**ImGui**](https://github.com/ocornut/imgui) - UI handling (GUI mode)
+- 📊 [**ImPlot**](https://github.com/epezent/implot) - charts and statistics data visualization
+- 📐 [**GLM**](https://github.com/g-truc/glm) - mathematical operations
+- 🖼️ [**GLI**](https://github.com/g-truc/gli) - DDS file support
+- 🏞️ [**GLFW**](https://github.com/glfw/glfw) - window & input handling
+- 📜 [**spdlog**](https://github.com/gabime/spdlog) - logging
+- 📂 [**cgltf**](https://github.com/jkuhlmann/cgltf) - loading GLTF/GLB objects
+- 📂 [**OpenFBX**](https://github.com/nem0/OpenFBX) - FBX file support
+- 📦 [**tiny_obj_loader**](https://github.com/tinyobjloader/tinyobjloader) - OBJ file support
+- 🖼️ [**stb_image**](https://github.com/nothings/stb) - image loading (HDR, JPG, PNG)
+- 💾 [**stb_image_write**](https://github.com/nothings/stb) - image saving
+- 🗂️ [**tinyfiledialogs**](https://sourceforge.net/projects/tinyfiledialogs/) - dialog windows
+- 🔤 [FreeType](https://github.com/freetype/freetype) - font rendering
 
 ## 🎨 Windowed Mode (GUI)
 - 🖥️ **User Interface**: **ImGui**  
@@ -120,10 +122,11 @@ For more examples, see [Examples.md](./Examples.md).
 - 🔑 OpenSSL
 - 🛠️ CMake >= 3.21
 - 🖥️ Git
-- 🎮 OpenGL >= 4.5
+- 🎮 OpenGL >= 4.3
+- 💻 C++20 compatible compiler
 
 ✅ **For Running:**
-- 🎮 OpenGL >= 4.5
+- 🎮 OpenGL >= 4.3
 - 📜 MSVCP140.dll
 - 📜 VCRUNTIME140.dll
 - 📜 VCRUNTIME140_1.dll

@@ -1,10 +1,10 @@
 #pragma once
 
 #define PBR_VISUALISER_VER_MAJOR 1
-#define PBR_VISUALISER_VER_MINOR 3
-#define PBR_VISUALISER_VER_PATCH 9
+#define PBR_VISUALISER_VER_MINOR 4
+#define PBR_VISUALISER_VER_PATCH 0
 
-#define PBR_VISUALISER_LAST_UPDATE "22.04.2025"
+#define PBR_VISUALISER_LAST_UPDATE "3.05.2025"
 
 #define PBR_VISUALISER_TO_STRING_VERSION(major, minor, patch) std::format("{}.{}.{}", major, minor, patch)
 #define PBR_VISUALISER_TO_INT_VERSION(major, minor, patch) (major * 10000 + minor * 100 + patch)
@@ -16,6 +16,18 @@
 //  / /__/ _ \/ _ `/ _ \/ _ `/ -_) / _ \/ _ `/
 //  \___/_//_/\_,_/_//_/\_, /\__/_/\___/\_, / 
 //                     /___/           /___/  
+// 
+// --- 1.4.0 ---
+// - displacement map in shaders fixed
+// - changed height value slider in window build
+// - added CameraController window in which you can change camera movement and rotation settings in window build
+// - added statistics window in window build
+// - fixed saving screenshots in window build
+// - change GL min version to 4.3
+// - added influence of exposure and color intensity of the environment map on the resulting color of the material
+// - added ImPlot for statistics plots
+// - added info in readme about c++ version
+// - changed screenshots in readme
 // 
 // --- 1.3.9 ---
 // - added better support for finding the path of a program's executable file

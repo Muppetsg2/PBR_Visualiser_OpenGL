@@ -1,6 +1,6 @@
-#version 450 core
+#version 430 core
 
-#define POINT_LIGHTS 1
+//#define POINT_LIGHTS 1
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 texCoord;
@@ -19,7 +19,7 @@ out VS_OUT {
     vec3 WorldPos;
     vec3 TangentViewPos;
     vec3 TangentWorldPos;
-    vec3 TangentLightPositions[POINT_LIGHTS];
+    //vec3 TangentLightPositions[POINT_LIGHTS];
     mat3 TBN;
 } vs_out;
 
@@ -27,7 +27,7 @@ uniform vec3 camPos;
 
 uniform mat4 model;
 
-uniform vec3 lightPositions[POINT_LIGHTS];
+//uniform vec3 lightPositions[POINT_LIGHTS];
 
 void main()  
 {  
@@ -45,8 +45,10 @@ void main()
     vs_out.TangentViewPos = TBN * camPos;
     vs_out.TangentWorldPos = TBN * vs_out.WorldPos;
 
+    /*
     for(int i = 0; i < POINT_LIGHTS; ++i)
     {
         vs_out.TangentLightPositions[i] = TBN * lightPositions[i];
     }
+    */
 }
