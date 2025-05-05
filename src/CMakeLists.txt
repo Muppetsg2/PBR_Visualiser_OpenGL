@@ -5,11 +5,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/pack_shaders.cmake)
 
 generate_key(6 SHADERS_KEY)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.png ${CMAKE_CURRENT_BINARY_DIR}/icon.png COPYONLY)
-if (WINDOW_APP)
-	configure_file(${CMAKE_SOURCE_DIR}/res/build_resources/imgui.ini ${CMAKE_CURRENT_BINARY_DIR}/imgui.ini COPYONLY)
-endif()
-
 # Add source files
 file(GLOB_RECURSE SOURCE_FILES 
 	 *.c
@@ -34,9 +29,9 @@ file(GLOB_RECURSE ASSETS_FILES
 
 set_source_files_properties(${ASSETS_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE_FILES})						   
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADER_FILES})
-source_group(TREE ${CMAKE_SOURCE_DIR}         FILES ${ASSETS_FILES})
+source_group("Source Files" FILES ${SOURCE_FILES})						   
+source_group("Header Files" FILES ${HEADER_FILES})
+source_group("Resources"    FILES ${ASSETS_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/icon.png)
 
 # Define the executable
 if (WINDOW_APP)
@@ -74,9 +69,19 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 												  ${stb_image_SOURCE_DIR}
 												  ${stb_image_write_SOURCE_DIR})
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${PROJECT_NAME} PUBLIC "-O2")
-endif()
+# Optimizations
+target_compile_options(${PROJECT_NAME} PUBLIC
+    $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:Debug>:/RTC1>
+    >
+    $<$<CXX_COMPILER_ID:GNU>:
+        $<$<CONFIG:Release>:-O2>
+    >
+    $<$<CXX_COMPILER_ID:Clang>:
+        $<$<CONFIG:Release>:-O2>
+    >
+)
 
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC glad
@@ -118,26 +123,51 @@ endif()
 
 string(REPLACE ";" " " SHADER_FILES_STR "${SHADER_FILES}")
 
-configure_file(${CMAKE_SOURCE_DIR}/res/build_resources/null.txt ${CMAKE_CURRENT_BINARY_DIR}/null.txt COPYONLY)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/icon.png
+            ${OUTPUT_DIR}/icon.png
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/icon.png
+    COMMENT "Copying icon.png to bin directory"
+)
+
+if (WINDOW_APP)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				${CMAKE_SOURCE_DIR}/res/build_resources/imgui.ini
+				${OUTPUT_DIR}/imgui.ini
+		DEPENDS ${CMAKE_SOURCE_DIR}/res/build_resources/imgui.ini
+		COMMENT "Copying imgui.ini to bin directory"
+	)
+endif()
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			${CMAKE_SOURCE_DIR}/res/build_resources/null.txt
+			${OUTPUT_DIR}/null.txt
+	DEPENDS ${CMAKE_SOURCE_DIR}/res/build_resources/null.txt
+	COMMENT "Copying null.txt to bin directory"
+)
 
 # Create a separate script to invoke the function
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/cmake_post_build.cmake 
-"cmake_policy(SET CMP0011 NEW)\n
-include(${CMAKE_SOURCE_DIR}/cmake/pack_shaders.cmake)\n
-set(null_path ${CMAKE_CURRENT_BINARY_DIR}/null.txt CACHE INTERNAL \"Path to null character for shaders\")\n
-string(REPLACE \" \" \";\" SHADER_LIST \"\${arg3}\")\n
-pack_shaders(\"\${arg1}\" \"\${arg2}\" \"\${SHADER_LIST}\")\n"
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "cmake_policy(SET CMP0011 NEW)" > ${OUTPUT_DIR}/cmake_post_build.cmake
+    COMMAND ${CMAKE_COMMAND} -E echo "include(${CMAKE_SOURCE_DIR}/cmake/pack_shaders.cmake)" >> ${OUTPUT_DIR}/cmake_post_build.cmake
+    COMMAND ${CMAKE_COMMAND} -E echo "set(null_path ${OUTPUT_DIR}/null.txt CACHE INTERNAL \\\"Path to null character for shaders\\\")" >> ${OUTPUT_DIR}/cmake_post_build.cmake
+    COMMAND ${CMAKE_COMMAND} -E echo "string(REPLACE \\\" \\\" \\\";\\\" SHADER_LIST \\\"\${arg3}\\\")" >> ${OUTPUT_DIR}/cmake_post_build.cmake
+    COMMAND ${CMAKE_COMMAND} -E echo "pack_shaders(\\\"\${arg1}\\\" \\\"\${arg2}\\\" \\\"\${SHADER_LIST}\\\")" >> ${OUTPUT_DIR}/cmake_post_build.cmake
+    COMMENT "Writing cmake_post_build.cmake script"
 )
 
 # Function packing shaders to one binary file
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "Packing Shaders Started..."
-    COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_CURRENT_BINARY_DIR}/shaders.dat" # Delete old file
-    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/shaders.dat" # Create new file
-    COMMAND ${CMAKE_COMMAND} -Darg1="${SHADERS_KEY}" -Darg2="${CMAKE_CURRENT_BINARY_DIR}/shaders.dat" -Darg3="${SHADER_FILES_STR}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_post_build.cmake"
+    COMMAND ${CMAKE_COMMAND} -E remove -f "${OUTPUT_DIR}/shaders.dat" # Delete old file
+    COMMAND ${CMAKE_COMMAND} -E touch "${OUTPUT_DIR}/shaders.dat" # Create new file
+    COMMAND ${CMAKE_COMMAND} -Darg1="${SHADERS_KEY}" -Darg2="${OUTPUT_DIR}/shaders.dat" -Darg3="${SHADER_FILES_STR}" -P "${OUTPUT_DIR}/cmake_post_build.cmake"
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
 				   COMMAND ${CMAKE_COMMAND} -E create_symlink 
 				   ${CMAKE_SOURCE_DIR}/res 
-				   ${CMAKE_CURRENT_BINARY_DIR}/res)
+				   ${OUTPUT_DIR}/res)

@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     builds = {
         "Window_x64": {
-            "source": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out\\build\\x64-Window\\src'),
+            "source": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out\\build\\x64-Window\\bin'),
             "files": [
                 "PBR_Visualiser.exe",
                 "shaders.dat",
@@ -133,7 +133,7 @@ if __name__ == "__main__":
             ]
         },
         "Console_x64": {
-            "source": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out\\build\\x64-Console\\src'),
+            "source": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out\\build\\x64-Console\\bin'),
             "files": [
                 "PBR_Visualiser.exe",
                 "shaders.dat",
